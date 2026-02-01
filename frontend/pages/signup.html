@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learnify</title>
+
+  <link rel="icon" href="logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="page5.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark px-4">
+    <a class="navbar-brand" href="index.html">
+      <img src="logo.png" alt="Learnify" class="logo-img"> Learnify
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html">HOME</a></li>
+        <li class="nav-item"><a class="nav-link" href="page2.html">COURSES</a></li>
+        <li class="nav-item"><a class="nav-link" href="page3.html">TEAM</a></li>
+        <li class="nav-item"><a class="nav-link" href="page4.html">PRICING</a></li>
+        <li class="nav-item" id="signin-item">
+          <a class="nav-link active" href="page5.html">SIGN IN</a>
+        </li>
+        <li class="nav-item ms-2">
+  <button id="theme-toggle" class="btn btn-sm" style="background:none; border:none; cursor:pointer; font-size:18px;">🌙</button>
+</li>
+    </div>
+  </nav>
+
+  <main class="main-wrapper">
+    <div class="signup-box shadow-lg">
+      <h2 class="mb-3 text-center">Sign up to Learnify</h2>
+      <p class="text-center mb-4 text-muted">Join our learning community and get access to the best courses online.</p>
+
+      <form id="signupForm" novalidate>
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <label for="firstName" class="form-label">First Name</label>
+      <input type="text" id="firstName" class="form-control form-control-lg" placeholder="Your First Name" required>
+      <div class="invalid-feedback">Please enter your first name (letters only).</div>
+    </div>
+    <div class="col-md-6 mb-3">
+      <label for="lastName" class="form-label">Last Name</label>
+      <input type="text" id="lastName" class="form-control form-control-lg" placeholder="Your Last Name" required>
+      <div class="invalid-feedback">Please enter your last name (letters only).</div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label for="email" class="form-label">Email</label>
+    <input type="email" id="email" class="form-control form-control-lg" placeholder="name@example.com" required>
+    <div class="invalid-feedback">Please enter a valid email address.</div>
+  </div>
+
+  <div class="mb-3">
+    <label for="password" class="form-label">Create password</label>
+    <input type="password" id="password" class="form-control" placeholder="At least 6 characters" minlength="6" required>
+    <div class="invalid-feedback">Password must be at least 6 characters long.</div>
+  </div>
+  <div class="mb-3">
+  <label for="confirmPassword" class="form-label">Confirm password</label>
+  <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password" minlength="6" required>
+  <div class="invalid-feedback" id="confirmPasswordError">Passwords do not match.</div>
+</div>
+
+  <button type="submit" class="btn btn-secondary btn-warning w-100 fw-bold btn-lg">Create an account</button>
+</form>
+
+
+      <p class="mt-3 text-center">
+        Already have an account? <a href="#" id="openLoginLink" class="text-primary fw-semibold">Log In</a>
+      </p>
+    </div>
+  </main>
+
+  <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content p-4">
+        <div class="modal-header border-0">
+          <h5 class="modal-title w-100 fw-bold text-center" id="loginModalLabel">Log in to Learnify</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="loginForm" novalidate>
+            <div class="mb-3">
+              <label for="loginEmail" class="form-label">Email</label>
+              <input type="email" id="loginEmail" class="form-control form-control-lg" placeholder="name@example.com" required>
+              <div class="invalid-feedback">Please enter a valid email address.</div>
+            </div>
+            <div class="mb-3">
+              <label for="loginPassword" class="form-label">Password</label>
+              <input type="password" id="loginPassword" class="form-control form-control-lg" placeholder="Your password" minlength="6" required>
+              <div class="invalid-feedback">Password must be at least 6 characters long.</div>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-warning w-100 fw-bold btn-lg">Log In</button>
+          </form>
+
+          <p class="mt-3 text-center">
+            Don't have an account? <a href="#" id="openSignupLink" class="text-primary fw-semibold">Sign Up</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer text-white py-3 mt-auto">
+    <div class="container text-center text-md-start">
+      <div class="row align-items-center gy-2">
+        <div class="col-md-4">
+          <p class="mb-0">Call center: +7 707 706 12 11</p>
+          <p class="mb-0"><a href="mailto:242395@astanait.edu.kz" class="text-white">242395@astanait.edu.kz</a></p>
+        </div>
+        <div class="col-md-4 text-center">
+          <p class="mb-0">Thank you for learning with us!</p>
+          <p class="mb-1">© 2026 | Learnify.</p>
+        </div>
+        <div class="col-md-4 text-md-end text-center">
+          <a href="https://www.instagram.com/infologia.kz" target="_blank" class="text-white me-3">
+            <i class="fab fa-instagram fs-3"></i>
+          </a>
+          <a href="https://youtube.com/@infologiakz" target="_blank" class="text-white">
+            <i class="fab fa-youtube fs-3"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="auth.js"></script>   
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="page5.js"></script>
+</body>
+</html>
