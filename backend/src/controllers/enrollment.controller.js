@@ -1,3 +1,4 @@
+const Course = require("../models/Course");
 const Enrollment = require("../models/Enrollment");
 
 exports.enrollToCourse = async (req, res) => {
@@ -25,7 +26,15 @@ exports.updateProgress = async (req, res) => {
 
   const enrollment = await Enrollment.findOneAndUpdate(
     { studentId: req.user.id, courseId },
-    { progress: { $min: [100, { $max: [0, "$progress"] }]}},
+    [
+      {
+        $set: {
+          progress: {
+            $min: [100, { $max: [0, value] }]
+          }
+        }
+      }
+    ],
     { new: true }
   );
 
