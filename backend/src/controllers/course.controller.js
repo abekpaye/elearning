@@ -24,48 +24,77 @@ exports.createCourse = async (req, res) => {
 };
 
 exports.getCourses = async (req, res) => {
-  const courses = await Course.find();
-  res.json(courses);
+  try {
+    const courses = await Course.find();
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.getCourseById = async (req, res) => {
-  const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-  const course = await Course.findById(id);
-  if (!course) {
-    return res.status(404).json({ message: "Course not found" });
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-
-  res.json(course);
 };
 
 exports.addLesson = async (req, res) => {
-  const { id } = req.params;
-  const { title, content, videoUrl, orderNumber } = req.body;
+  try {
+    const { id } = req.params;
+    const { title, content, videoUrl, orderNumber } = req.body;
 
-  await Course.findByIdAndUpdate(
-    id,
-    {
-      $push: {
-        lessons: { title, content, videoUrl, orderNumber }
-      }
+    const course = await Course.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          lessons: { title, content, videoUrl, orderNumber }
+        }
+      },
+      { new: true }
+    );
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
     }
-  );
 
-  res.json({ message: "Lesson added" });
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.addQuiz = async (req, res) => {
-  const { id } = req.params;
-  const { title, tasks } = req.body;
+  try {
+    const { id } = req.params;
+    const { title, tasks } = req.body;
 
-  await Course.findByIdAndUpdate(id, {
-    $push: {
-      quizzes: { title, tasks }
+    const course = await Course.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          quizzes: { title, tasks }
+        }
+      },
+      { new: true }
+    );
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
     }
-  });
 
-  res.json({ message: "Quiz added" });
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.updateCourse = async (req, res) => {
@@ -116,7 +145,9 @@ exports.deleteCourse = async (req, res) => {
 
     await Course.findByIdAndDelete(id);
     await Enrollment.deleteMany({ courseId: id });
-    await QuizAttempt.deleteMany({ quizId: { $in: course.quizzes.map(q => q._id) } });
+    await QuizAttempt.deleteMany({
+      quizId: { $in: course.quizzes.map(q => q._id) }
+    });
 
     res.json({ message: "Course and related data deleted" });
   } catch (error) {
