@@ -23,6 +23,6 @@ const quizAttemptSchema = new mongoose.Schema(
    
 );
 
-quizAttemptSchema.index({ score: -1 });
+quizAttemptSchema.index({ quizId: 1, score: -1 });
 
 module.exports = mongoose.model("QuizAttempt", quizAttemptSchema, "quizAttempts");
