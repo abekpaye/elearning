@@ -28,6 +28,17 @@ exports.getCourses = async (req, res) => {
   res.json(courses);
 };
 
+exports.getCourseById = async (req, res) => {
+  const { id } = req.params;
+
+  const course = await Course.findById(id);
+  if (!course) {
+    return res.status(404).json({ message: "Course not found" });
+  }
+
+  res.json(course);
+};
+
 exports.addLesson = async (req, res) => {
   const { id } = req.params;
   const { title, content, videoUrl, orderNumber } = req.body;
