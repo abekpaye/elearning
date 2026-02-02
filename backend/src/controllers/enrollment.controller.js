@@ -4,6 +4,11 @@ exports.enrollToCourse = async (req, res) => {
   const { courseId } = req.body;
 
   try {
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
     const enrollment = await Enrollment.create({
       studentId: req.user.id,
       courseId
@@ -20,7 +25,7 @@ exports.updateProgress = async (req, res) => {
 
   const enrollment = await Enrollment.findOneAndUpdate(
     { studentId: req.user.id, courseId },
-    { $inc: { progress: value } },
+    { progress: { $min: [100, { $max: [0, "$progress"] }]}},
     { new: true }
   );
 
