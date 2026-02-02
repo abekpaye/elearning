@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Enrollment = require("../models/Enrollment");
 
 exports.getCourseEngagement = async (req, res) => {
