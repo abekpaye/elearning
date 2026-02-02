@@ -38,6 +38,10 @@ exports.answerQuestion = async (req, res) => {
     return res.status(404).json({ message: "Course not found" });
   }
 
+  if (course.mentorId.toString() !== req.user.id) {
+    return res.status(403).json({ message: "You are not mentor of this course" });
+  }
+
   const question = course.questions.id(questionId);
   if (!question) {
     return res.status(404).json({ message: "Question not found" });
