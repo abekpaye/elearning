@@ -2,7 +2,17 @@ const Enrollment = require("../models/Enrollment");
 
 exports.getCourseEngagement = async (req, res) => {
   try {
-    const analytics = await Enrollment.aggregate([
+    const { courseId } = req.query;
+
+    const pipeline = [];
+
+    if (courseId) {
+      pipeline.push({
+        $match: { courseId: new mongoose.Types.ObjectId(courseId) }
+      });
+    }
+
+    pipeline.push(
       {
         $group: {
           _id: "$courseId",
@@ -35,7 +45,10 @@ exports.getCourseEngagement = async (req, res) => {
         }
       },
       { $sort: { studentsCount: -1 } }
-    ]);
+    );
+
+    const analytics = await Enrollment.aggregate(pipeline);
+
 
     res.json(analytics);
   } catch (error) {
