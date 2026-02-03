@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Login</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="main">
+    <div class="container">
+      <div class="card" style="max-width:520px;margin:0 auto;">
+        <h2 style="margin:0 0 10px;">Sign in</h2>
+        <p class="small" style="margin:0 0 16px;">Use your email and password to access courses.</p>
+
+        <form class="form" id="loginForm">
+          <input class="input" type="email" id="email" placeholder="Email" required />
+          <input class="input" type="password" id="password" placeholder="Password" required />
+
+          <button class="btn" type="submit">Login</button>
+          <p class="small" style="margin:6px 0 0;">
+            No account? <a href="register.html">Create one</a>
+          </p>
+
+          <div id="msg" class="small" style="margin-top:10px;"></div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/login.js"></script>
+</body>
+</html>

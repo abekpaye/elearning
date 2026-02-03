@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Course</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="main">
+    <div class="container">
+      <div id="msg" class="small" style="margin:10px 0;"></div>
+
+      <div class="card" id="courseBox">
+        <h2 id="courseTitle" style="margin:0 0 8px;">Loading...</h2>
+        <p id="courseDesc" class="small" style="margin:0 0 14px;"></p>
+
+        <div id="actions" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+        <div class="card">
+          <h3 style="margin:0 0 10px;">Lessons</h3>
+          <div id="lessonsList" class="small"></div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 10px;">Quizzes</h3>
+          <div id="quizzesList" class="small"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3 style="margin:0 0 10px;">Q&A</h3>
+
+        <div id="qaInfo" class="small" style="margin-bottom:10px;"></div>
+
+        <form id="askForm" class="form" style="max-width:640px;display:none;">
+          <input class="input" id="questionText" placeholder="Ask a question..." />
+          <button class="btn" type="submit">Submit question</button>
+        </form>
+
+        <div id="questionsList" style="margin-top:14px;"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/course.js"></script>
+</body>
+</html>

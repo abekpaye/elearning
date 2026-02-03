@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Courses</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="main">
+    <div class="container">
+      <h2 style="margin:0 0 10px;">Courses</h2>
+      <p class="small" style="margin:0 0 18px;">Choose a course and start learning.</p>
+
+      <div id="msg" class="small" style="margin:10px 0;"></div>
+      <div id="coursesList" class="courseList"></div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/courses.js"></script>
+</body>
+</html>
