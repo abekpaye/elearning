@@ -71,8 +71,8 @@ exports.addQuiz = async (req, res) => {
     const { id } = req.params;
     const { title, tasks } = req.body;
 
-    const course = await Course.findByIdAndUpdate(
-      id,
+    const course = await Course.findOneAndUpdate(
+      { _id: id, instructorId: req.user.id },
       {
         $push: {
           quizzes: { title, tasks }
@@ -82,7 +82,9 @@ exports.addQuiz = async (req, res) => {
     );
 
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      return res
+        .status(403)
+        .json({ message: "Access denied or course not found" });
     }
 
     res.json(course);
@@ -90,6 +92,7 @@ exports.addQuiz = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.updateCourse = async (req, res) => {
   try {
