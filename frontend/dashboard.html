@@ -16,28 +16,13 @@
       <div id="msg" class="small" style="margin:10px 0;"></div>
 
       <!-- STUDENT -->
-      <section class="card" id="studentBox" style="display:none;">
-        <h3 style="margin:0 0 10px;">Student panel</h3>
-        <div class="form" style="max-width:520px;">
-          <input
-            class="input"
-            id="studentCourseId"
-            placeholder="Course ID (for progress update)"
-          />
-          <input
-            class="input"
-            id="studentProgress"
-            placeholder="Progress (0-100)"
-            type="number"
-            min="0"
-            max="100"
-          />
-          <button class="btn" id="btnProgress">Update progress</button>
-        </div>
-        <div class="small" style="margin-top:10px;">
-          Tip: enroll from Courses page, then update your progress here.
-        </div>
-      </section>
+     <section class="card" id="studentBox" style="display:none;">
+      <h3 style="margin:0 0 14px;">My progress</h3>
+
+      <div id="studentProgressList"></div>
+
+    </section>
+
 
       <!-- INSTRUCTOR -->
       <section

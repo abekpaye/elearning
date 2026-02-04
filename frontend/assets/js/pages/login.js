@@ -30,7 +30,7 @@ form.addEventListener("submit", async (e) => {
 
     // 👉 сразу на dashboard
     setTimeout(() => {
-      window.location.href = "dashboard.html";
+      window.location.href = "courses.html";
     }, 500);
 
   } catch (err) {

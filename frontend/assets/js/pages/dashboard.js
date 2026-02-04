@@ -3,6 +3,7 @@ import { getRole, isLoggedIn } from "../auth.js";
 
 const msg = document.getElementById("msg");
 const roleLine = document.getElementById("roleLine");
+const progressList = document.getElementById("studentProgressList");
 
 const studentBox = document.getElementById("studentBox");
 const instructorBox = document.getElementById("instructorBox");
@@ -37,6 +38,9 @@ function showPanel(role) {
   const role = getRole();
   roleLine.textContent = `Logged in role: ${role}`;
   showPanel(role);
+  if (role === "student") {
+    loadStudentProgress();
+  }
 })();
 
 /* ---------- STUDENT ---------- */
@@ -57,6 +61,41 @@ document.getElementById("btnProgress")?.addEventListener("click", async () => {
     show(e.message || "Progress update failed");
   }
 });
+
+async function loadStudentProgress() {
+  try {
+    const enrollments = await apiRequest("/enrollments/my", { auth: true });
+
+    if (!enrollments.length) {
+      progressList.innerHTML =
+        `<div class="small">You are not enrolled in any courses yet.</div>`;
+      return;
+    }
+
+    progressList.innerHTML = enrollments.map(e => `
+      <div class="card" style="margin-bottom:14px;">
+        <h4 style="margin:0 0 6px;">${esc(e.courseId.title)}</h4>
+        <p class="small" style="margin:0 0 10px;">
+          ${esc(e.courseId.description || "")}
+        </p>
+
+        <div class="progressBar">
+          <div class="progressFill" style="width:${e.progress}%">
+            ${e.progress}%
+          </div>
+        </div>
+
+        <a class="btn" style="margin-top:10px;display:inline-block;"
+           href="course.html?id=${e.courseId._id}">
+          Open course
+        </a>
+      </div>
+    `).join("");
+
+  } catch (e) {
+    show(e.message || "Failed to load progress");
+  }
+}
 
 /* ---------- INSTRUCTOR ---------- */
 
