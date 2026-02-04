@@ -145,7 +145,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Learnify | Dashboard</title>
+  <title>Learnify | Progress</title>
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
@@ -153,7 +153,7 @@
 
   <main class="main">
     <div class="container">
-      <h2 style="margin:0 0 6px;">Dashboard</h2>
+      <h2 style="margin:0 0 6px;">Progress</h2>
       <p class="small" id="roleLine" style="margin:0 0 14px;"></p>
       <div id="msg" class="small" style="margin:10px 0;"></div>
 
@@ -1163,7 +1163,7 @@ form.addEventListener("submit", async (e) => {
 
     // 👉 сразу на dashboard
     setTimeout(() => {
-      window.location.href = "dashboard.html";
+      window.location.href = "courses.html";
     }, 500);
 
   } catch (err) {
@@ -1444,7 +1444,7 @@ document
     <nav class="nav">
       <a class="nav__link" href="index.html">HOME</a>
       <a class="nav__link" href="courses.html">COURSES</a>
-      <a class="nav__link" href="dashboard.html" data-nav="dashboard" style="display:none;">DASHBOARD</a>
+      <a class="nav__link" href="dashboard.html" data-nav="dashboard" style="display:none;">PROGRESS</a>
       <a class="nav__link" href="login.html" data-nav="signin">SIGN IN</a>
       <span class="badge" data-nav="role" style="display:none;"></span>
       <a class="nav__link nav__link--btn" href="#" data-nav="logout" style="display:none;">LOG OUT</a>

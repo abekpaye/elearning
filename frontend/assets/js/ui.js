@@ -13,11 +13,13 @@ function updateNav() {
 
   const signInLink = document.querySelector('[data-nav="signin"]');
   const dashboardLink = document.querySelector('[data-nav="dashboard"]');
+  const coursesLink = document.querySelector('[data-nav="courses"]');
   const logoutBtn = document.querySelector('[data-nav="logout"]');
   const roleBadge = document.querySelector('[data-nav="role"]');
 
   if (signInLink) signInLink.style.display = logged ? "none" : "inline-block";
   if (dashboardLink) dashboardLink.style.display = logged ? "inline-block" : "none";
+  if (coursesLink) coursesLink.style.display = logged ? "inline-block" : "none";
   if (logoutBtn) logoutBtn.style.display = logged ? "inline-block" : "none";
 
   if (roleBadge) {
