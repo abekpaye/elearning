@@ -20,7 +20,8 @@ exports.createCourse = async (req, res) => {
 
 exports.getCourses = async (req, res) => {
   try {
-    const courses = await Course.find();
+    const courses = await Course.find()
+    .select("-quizzes.tasks.correctOptionId");
     res.json(courses);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,7 +32,9 @@ exports.getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const course = await Course.findById(id);
+    const course = await Course.findById(id)
+    .select("-quizzes.tasks.correctOptionId");
+
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
@@ -47,18 +50,14 @@ exports.addLesson = async (req, res) => {
     const { id } = req.params;
     const { title, content, videoUrl, orderNumber } = req.body;
 
-    const course = await Course.findByIdAndUpdate(
-      id,
-      {
-        $push: {
-          lessons: { title, content, videoUrl, orderNumber }
-        }
-      },
+    const course = await Course.findOneAndUpdate(
+      { _id: id, instructorId: req.user.id },
+      { $push: { lessons: { title, content, videoUrl, orderNumber } } },
       { new: true }
     );
 
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      return res.status(403).json({ message: "Access denied or course not found" });
     }
 
     res.json(course);

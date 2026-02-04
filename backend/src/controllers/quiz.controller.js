@@ -11,8 +11,3 @@ exports.createAttempt = async (req, res) => {
 
   res.status(201).json(attempt);
 };
-
-exports.deleteLowScores = async (req, res) => {
-  await QuizAttempt.deleteMany({ score: { $lt: 50 } });
-  res.json({ message: "Low score attempts deleted" });
-};

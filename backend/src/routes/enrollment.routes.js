@@ -4,8 +4,9 @@ const router = express.Router();
 const Enrollment = require("../models/Enrollment");
 const authMiddleware = require("../middleware/auth.middleware"); 
 const Course = require("../models/Course");
+const role = require("../middleware/role.middleware");
 
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, role("student"), async (req, res) => {
   try {
     const studentId = req.user.id;
     const { courseId } = req.body;
@@ -34,6 +35,19 @@ router.get("/my", authMiddleware, async (req, res) => {
       .populate("courseId");
 
     res.json(enrollments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/:courseId", authMiddleware, async (req, res) => {
+  try {
+    const enrollment = await Enrollment.findOne({
+      studentId: req.user.id,
+      courseId: req.params.courseId
+    });
+
+    res.json(enrollment);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
