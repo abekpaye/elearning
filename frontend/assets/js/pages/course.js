@@ -85,6 +85,17 @@ function renderActions(courseId) {
 
 /* ---------- lessons & quizzes ---------- */
 
+function getYoutubeEmbed(url) {
+  if (!url) return null;
+
+  // youtu.be/xxxx или youtube.com/watch?v=xxxx
+  const match = url.match(
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/ 
+  );
+
+  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+}
+
 function renderNavLessons(lessons = []) {
   navLessons.innerHTML = lessons.length
     ? lessons.map((l,i)=>`
@@ -97,12 +108,61 @@ function renderNavLessons(lessons = []) {
     el.onclick = () => {
       const l = currentCourse.lessons[el.dataset.lesson];
       contentArea.innerHTML = `
-        <h3>${escapeHtml(l.title)}</h3>
-        <p class="small">${escapeHtml(l.content)}</p>
-      `;
+  <h3>${escapeHtml(l.title)}</h3>
+
+  ${
+    l.videoUrl
+      ? `
+        <div style="margin:16px 0;">
+          <iframe
+            width="100%"
+            height="400"
+            src="${getYoutubeEmbed(l.videoUrl)}"
+            title="Lesson video"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+          </iframe>
+        </div>
+      `
+      : ""
+  }
+
+  <p class="small">${escapeHtml(l.content)}</p>
+`;
     };
   });
 }
+
+navLessons.querySelectorAll("[data-lesson]").forEach(el => {
+  el.onclick = () => {
+    const l = currentCourse.lessons[el.dataset.lesson];
+    const embedUrl = getYoutubeEmbed(l.videoUrl);
+
+    contentArea.innerHTML = `
+      <h3>${escapeHtml(l.title)}</h3>
+
+      ${
+        embedUrl
+          ? `
+            <div style="margin:16px 0;">
+              <iframe
+                width="100%"
+                height="400"
+                src="${embedUrl}"
+                frameborder="0"
+                allowfullscreen>
+              </iframe>
+            </div>
+          `
+          : ""
+      }
+
+      <p class="small">${escapeHtml(l.content)}</p>
+    `;
+  };
+});
+
 
 function renderNavQuizzes(quizzes = []) {
   navQuizzes.innerHTML = quizzes.length
