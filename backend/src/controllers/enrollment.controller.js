@@ -20,23 +20,3 @@ exports.enrollToCourse = async (req, res) => {
     res.status(400).json({ message: "Already enrolled or invalid data" });
   }
 };
-
-exports.updateProgress = async (req, res) => {
-  const { courseId, value } = req.body;
-
-  const enrollment = await Enrollment.findOneAndUpdate(
-    { studentId: req.user.id, courseId },
-    [
-      {
-        $set: {
-          progress: {
-            $min: [100, { $max: [0, value] }]
-          }
-        }
-      }
-    ],
-    { new: true }
-  );
-
-  res.json(enrollment);
-};
