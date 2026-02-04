@@ -1,7 +1,6 @@
 import { apiRequest } from "../api.js";
 import { getRole, isLoggedIn } from "../auth.js";
 
-/* ---------- DOM ---------- */
 
 const msg = document.getElementById("msg");
 
@@ -14,12 +13,9 @@ const navQuizzes = document.getElementById("navQuizzes");
 const openQA = document.getElementById("openQA");
 const contentArea = document.getElementById("contentArea");
 
-/* ---------- STATE ---------- */
 
 let currentCourse = null;
 let isEnrolled = false;
-
-/* ---------- HELPERS ---------- */
 
 function show(text, ok = false) {
   msg.textContent = text;
@@ -46,8 +42,6 @@ function getYoutubeEmbed(url) {
 
   return match ? `https://www.youtube.com/embed/${match[1]}` : null;
 }
-
-/* ---------- ENROLLMENT ---------- */
 
 async function checkEnrollment(courseId) {
   if (!isLoggedIn() || getRole() !== "student") return false;
@@ -77,7 +71,6 @@ async function enroll(courseId) {
   }
 }
 
-/* ---------- ACTIONS ---------- */
 
 function renderActions(courseId) {
   actionsEl.innerHTML = "";
@@ -115,7 +108,6 @@ function renderActions(courseId) {
   }
 }
 
-/* ---------- LESSONS ---------- */
 
 function openLessonByIndex(index = 0) {
   const l = currentCourse?.lessons?.[index];
@@ -166,8 +158,6 @@ function renderNavLessons(lessons = []) {
   });
 }
 
-/* ---------- QUIZZES ---------- */
-
 function renderNavQuizzes(quizzes = []) {
   navQuizzes.innerHTML = quizzes.length
     ? quizzes
@@ -192,14 +182,12 @@ function renderNavQuizzes(quizzes = []) {
   });
 }
 
-/* ---------- LOAD ---------- */
-
 async function load() {
   const courseId = getCourseId();
   if (!courseId) return show("No course id");
 
   try {
-    const course = await apiRequest(`/courses/${courseId}`);
+    const course = await apiRequest(`/courses/${courseId}`, { auth: true });
     currentCourse = course;
 
     titleEl.textContent = course.title;
