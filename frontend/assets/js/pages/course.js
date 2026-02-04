@@ -1,3 +1,4 @@
+// frontend/assets/js/pages/course.js
 import { apiRequest } from "../api.js";
 import { getRole, isLoggedIn } from "../auth.js";
 
@@ -14,13 +15,18 @@ const contentArea = document.getElementById("contentArea");
 let currentCourse = null;
 let isEnrolled = false;
 
+/* ---------- helpers ---------- */
+
 function show(text, ok = false) {
   msg.textContent = text;
   msg.style.color = ok ? "green" : "crimson";
 }
 
 function escapeHtml(s = "") {
-  return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function getCourseId() {
@@ -41,6 +47,8 @@ async function checkEnrollment(courseId) {
 
   return data.some((e) => e.courseId?._id === courseId || e.courseId === courseId);
 }
+
+/* ---------- enroll UI ---------- */
 
 async function enroll(courseId) {
   try {
@@ -71,7 +79,6 @@ function renderActions(courseId) {
     return;
   }
 
-  // Student not enrolled -> show enroll button
   if (getRole() === "student" && !isEnrolled) {
     const btn = document.createElement("button");
     btn.className = "btn";
@@ -79,9 +86,9 @@ function renderActions(courseId) {
     btn.onclick = () => enroll(courseId);
     actionsEl.appendChild(btn);
   }
-
-  // If enrolled -> show nothing (as you wanted)
 }
+
+/* ---------- lessons ---------- */
 
 function openLessonByIndex(index = 0) {
   const l = currentCourse?.lessons?.[index];
@@ -132,138 +139,161 @@ function renderNavLessons(lessons = []) {
   });
 }
 
-/* ---------------- QUIZ UI ---------------- */
+/* ---------- quizzes: stats / lock / submit ---------- */
 
-function renderQuizByIndex(index = 0) {
-  const q = currentCourse?.quizzes?.[index];
-  if (!q) return;
+async function loadQuizStats(quizId) {
+  try {
+    return await apiRequest(`/quizzes/attempts/my?quizId=${quizId}`, { auth: true });
+  } catch {
+    return { latestAttempt: null, attemptsCount: 0 };
+  }
+}
 
-  const role = getRole();
-  const canSubmit = isLoggedIn() && role === "student" && isEnrolled;
-
-  const tasks = Array.isArray(q.tasks) ? q.tasks : [];
+function renderLockedQuizView(q, stats, onRetake) {
+  const attempts = Number(stats?.attemptsCount || 0);
+  const last = stats?.latestAttempt?.score;
 
   contentArea.innerHTML = `
     <h3>${escapeHtml(q.title)}</h3>
-    <p class="small">Questions: ${tasks.length}</p>
+    <div class="small" style="margin-top:8px;">
+      This quiz is already submitted.
+      ${typeof last === "number" ? ` Last score: <b>${last}</b>.` : ""}
+      ${attempts > 0 ? ` Attempts: <b>${attempts}</b>.` : ""}
+    </div>
 
-    ${
-      tasks.length
-        ? `
-          <form id="quizForm">
-            ${tasks
-              .map((t, ti) => {
-                const opts = Array.isArray(t.options) ? t.options : [];
-                return `
-                  <div class="qBox" data-task="${t._id}">
-                    <div class="qTitle">${ti + 1}. ${escapeHtml(t.question)}</div>
-                    <div class="qMeta">Choose one option</div>
-
-                    ${opts
-                      .map(
-                        (o) => `
-                        <label class="listItem" style="display:block; cursor:pointer;">
-                          <input
-                            type="radio"
-                            name="task_${t._id}"
-                            value="${o._id}"
-                            ${canSubmit ? "" : "disabled"}
-                          />
-                          ${escapeHtml(o.text)}
-                        </label>
-                      `
-                      )
-                      .join("")}
-
-                    <div class="answer" data-result style="display:none;"></div>
-                  </div>
-                `;
-              })
-              .join("")}
-
-            ${
-              canSubmit
-                ? `<button class="btn" type="submit">Submit</button>`
-                : `<div class="small" style="margin-top:10px;">
-                    ${
-                      !isLoggedIn()
-                        ? "Login to submit this quiz."
-                        : role !== "student"
-                        ? "Only students can submit quizzes."
-                        : !isEnrolled
-                        ? "Enroll to submit this quiz."
-                        : "You cannot submit this quiz."
-                    }
-                  </div>`
-            }
-          </form>
-        `
-        : `<div class="small">No tasks in this quiz.</div>`
-    }
+    <div style="margin-top:14px;">
+      <button class="btn" id="btnRetake">Retake</button>
+    </div>
   `;
 
-  if (!canSubmit) return;
+  document.getElementById("btnRetake").onclick = onRetake;
+}
 
-  const form = document.getElementById("quizForm");
+function renderQuizForm(q, onSubmit) {
+  const tasks = q.tasks || [];
 
-  form.addEventListener("submit", async (e) => {
+  contentArea.innerHTML = `
+    <h3>${escapeHtml(q.title)}</h3>
+
+    <form id="quizForm" style="margin-top:14px;">
+      ${tasks
+        .map((t, idx) => {
+          const opts = (t.options || [])
+            .map(
+              (o) => `
+              <label class="answer" style="display:block; cursor:pointer;">
+                <input type="radio" name="q_${t._id}" value="${o._id}" />
+                ${escapeHtml(o.text)}
+              </label>
+            `
+            )
+            .join("");
+
+          return `
+            <div class="qBox" data-task="${t._id}">
+              <div class="qTitle">${idx + 1}. ${escapeHtml(t.question)}</div>
+              ${opts}
+              <div class="small" data-feedback style="margin-top:6px;"></div>
+            </div>
+          `;
+        })
+        .join("")}
+
+      <button class="btn" type="submit" style="margin-top:10px;">Submit</button>
+      <div class="small" id="quizMsg" style="margin-top:10px;"></div>
+    </form>
+  `;
+
+  document.getElementById("quizForm").addEventListener("submit", onSubmit);
+}
+
+function markQuizResults(results = []) {
+  results.forEach((r) => {
+    const box = contentArea.querySelector(`.qBox[data-task="${r.taskId}"]`);
+    if (!box) return;
+
+    const feedback = box.querySelector("[data-feedback]");
+    if (!feedback) return;
+
+    if (r.isCorrect) {
+      feedback.textContent = "✅ Correct";
+      feedback.style.color = "green";
+    } else {
+      feedback.textContent = "❌ Wrong";
+      feedback.style.color = "crimson";
+    }
+  });
+}
+
+async function openQuizByIndex(index = 0) {
+  const q = currentCourse?.quizzes?.[index];
+  if (!q) return;
+
+  const canSubmit = isLoggedIn() && getRole() === "student" && isEnrolled;
+
+  if (!canSubmit) {
+    contentArea.innerHTML = `
+      <h3>${escapeHtml(q.title)}</h3>
+      <div class="small">Login as student and enroll to take this quiz.</div>
+    `;
+    return;
+  }
+
+  const stats = await loadQuizStats(q._id);
+  const hasAttempts = Number(stats?.attemptsCount || 0) > 0;
+
+  if (hasAttempts) {
+    renderLockedQuizView(q, stats, () => {
+      renderQuizForm(q, handleSubmit);
+    });
+    return;
+  }
+
+  renderQuizForm(q, handleSubmit);
+
+  async function handleSubmit(e) {
     e.preventDefault();
 
+    const quizMsg = document.getElementById("quizMsg");
+    quizMsg.textContent = "";
+    quizMsg.style.color = "crimson";
+
+    const answers = (q.tasks || []).map((t) => {
+      const checked = contentArea.querySelector(`input[name="q_${t._id}"]:checked`);
+      return { taskId: t._id, selectedOptionId: checked ? checked.value : null };
+    });
+
+    if (answers.some((a) => !a.selectedOptionId)) {
+      quizMsg.textContent = "Please answer all questions.";
+      return;
+    }
+
     try {
-      show("");
-
-      const answers = tasks.map((t) => {
-        const selected = form.querySelector(`input[name="task_${t._id}"]:checked`);
-        return {
-          taskId: t._id,
-          selectedOptionId: selected ? selected.value : null
-        };
-      });
-
-      const hasEmpty = answers.some((a) => !a.selectedOptionId);
-      if (hasEmpty) {
-        return show("Please answer all questions before submit.");
-      }
-
       const resp = await apiRequest("/quizzes/attempts", {
         method: "POST",
         body: { quizId: q._id, answers },
         auth: true
       });
 
-      show(`Submitted! Score: ${resp.score}. Course progress: ${resp.progress}`, true);
+      // show correct/wrong
+      markQuizResults(resp.results || []);
+      quizMsg.textContent = `Submitted! Score: ${resp.score}. Progress: ${resp.progress}.`;
+      quizMsg.style.color = "green";
 
-      const resultMap = new Map(resp.results.map((r) => [String(r.taskId), r]));
-
-      document.querySelectorAll(".qBox").forEach((box) => {
-        const taskId = String(box.getAttribute("data-task"));
-        const r = resultMap.get(taskId);
-        if (!r) return;
-
-        const resultEl = box.querySelector('[data-result]');
-        resultEl.style.display = "block";
-
-        const task = tasks.find((x) => String(x._id) === taskId);
-        const correctText =
-          task?.options?.find((o) => String(o._id) === String(r.correctOptionId))?.text ||
-          "Correct option";
-
-        if (r.isCorrect) {
-          resultEl.textContent = "✅ Correct";
-          resultEl.style.border = "1px solid rgba(0,128,0,.25)";
-        } else {
-          resultEl.textContent = `❌ Wrong. Correct answer: ${correctText}`;
-          resultEl.style.border = "1px solid rgba(220,20,60,.25)";
-        }
-      });
-
-      // lock after submit
-      form.querySelectorAll("input, button").forEach((el) => (el.disabled = true));
+      // then lock (and refresh will also be locked)
+      const newStats = await loadQuizStats(q._id);
+      setTimeout(() => {
+        renderLockedQuizView(q, newStats, () => {
+          renderQuizForm(q, handleSubmit);
+        });
+      }, 700);
     } catch (err) {
-      show(err.message || "Submit failed");
+      quizMsg.textContent = err.message || "Submit failed";
     }
-  });
+  }
 }
+
+/* ---------- quizzes nav ---------- */
 
 function renderNavQuizzes(quizzes = []) {
   navQuizzes.innerHTML = quizzes.length
@@ -279,11 +309,11 @@ function renderNavQuizzes(quizzes = []) {
     : `<div class="small">No quizzes</div>`;
 
   navQuizzes.querySelectorAll("[data-quiz]").forEach((el) => {
-    el.onclick = () => renderQuizByIndex(Number(el.dataset.quiz));
+    el.onclick = () => openQuizByIndex(Number(el.dataset.quiz));
   });
 }
 
-/* ---------------- Load course ---------------- */
+/* ---------- load course ---------- */
 
 async function load() {
   const courseId = getCourseId();
