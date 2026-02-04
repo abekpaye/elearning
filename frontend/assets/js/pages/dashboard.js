@@ -73,7 +73,7 @@ document.getElementById("createCourseForm")?.addEventListener("submit", async (e
       body:{ title, description, price, mentorId },
       auth:true
     });
-    show(`Course created! ID: ${data._id || data.id}`, true);
+    show(`Course created! ID: ${data._id || data.id}` , true);
     e.target.reset();
   }catch(err){
     show(err.message || "Create course failed");

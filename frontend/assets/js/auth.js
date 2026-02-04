@@ -10,12 +10,12 @@ export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function getRole(){
-  return localStorage.getItem("role") || "";
+export function getRole() {
+  return localStorage.getItem(ROLE_KEY);
 }
 
-export function isLoggedIn(){
-  return !!localStorage.getItem("token");
+export function isLoggedIn() {
+  return !!getToken();
 }
 
 export function logout() {
