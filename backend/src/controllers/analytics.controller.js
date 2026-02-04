@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 const Enrollment = require("../models/Enrollment");
 const Course = require("../models/Course");
 const QuizAttempt = require("../models/QuizAttempt");
-const User = require("../models/User");
 
 exports.getCourseEngagement = async (req, res) => {
   try {
@@ -76,35 +75,24 @@ exports.getCourseEngagement = async (req, res) => {
 exports.getTopStudentsByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
-    
-    const course = await Course.findOne({
-      _id: courseId,
-      instructorId: req.user.id
-    });
+
+    const course = await Course.findOne(
+      { _id: courseId, instructorId: req.user.id },
+      { quizzes: 1 }
+    );
 
     if (!course) {
       return res.status(404).json({ message: "Course not found or access denied" });
     }
 
+    const quizIds = course.quizzes.map(q => q._id);
+
     const pipeline = [
       {
-        $lookup: {
-          from: "courses",
-          let: { quizId: "$quizId" },
-          pipeline: [
-            { $match: { _id: new mongoose.Types.ObjectId(courseId) } },
-            { $unwind: "$quizzes" },
-            {
-              $match: {
-                $expr: { $eq: ["$quizzes._id", "$$quizId"] }
-              }
-            }
-          ],
-          as: "courseQuiz"
+        $match: {
+          quizId: { $in: quizIds }
         }
       },
-      { $unwind: "$courseQuiz" },
-
       {
         $group: {
           _id: "$studentId",
@@ -112,10 +100,8 @@ exports.getTopStudentsByCourse = async (req, res) => {
           attempts: { $sum: 1 }
         }
       },
-
       { $sort: { avgScore: -1 } },
-      { $limit: 10 },
-
+      { $limit: 3 }, // 🔥 ТРЕБУЕМЫЙ ТОП-3
       {
         $lookup: {
           from: "users",
@@ -125,7 +111,6 @@ exports.getTopStudentsByCourse = async (req, res) => {
         }
       },
       { $unwind: "$student" },
-
       {
         $project: {
           _id: 0,
@@ -139,8 +124,8 @@ exports.getTopStudentsByCourse = async (req, res) => {
     ];
 
     const topStudents = await QuizAttempt.aggregate(pipeline);
-
     res.json(topStudents);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
