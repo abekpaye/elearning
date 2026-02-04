@@ -7,6 +7,8 @@ const progressList = document.getElementById("studentProgressList");
 
 const studentBox = document.getElementById("studentBox");
 const instructorBox = document.getElementById("instructorBox");
+const courseSelect = document.getElementById("courseSelect");
+const courseStats = document.getElementById("courseStats");
 
 function show(text, ok = false) {
   msg.textContent = text;
@@ -41,6 +43,10 @@ function showPanel(role) {
   if (role === "student") {
     loadStudentProgress();
   }
+  if (role === "instructor") {
+    loadInstructorCourses();
+  }
+
 })();
 
 /* ---------- STUDENT ---------- */
@@ -168,3 +174,72 @@ document
       show(err.message || "Add quiz failed (check JSON tasks)");
     }
   });
+
+  async function loadInstructorCourses() {
+  try {
+    const courses = await apiRequest("/courses/my", { auth: true });
+
+    if (!courses.length) {
+      courseStats.innerHTML =
+        `<div class="small">You haven't created any courses yet.</div>`;
+      return;
+    }
+
+    courseSelect.innerHTML =
+      `<option value="">Select course</option>` +
+      courses
+        .map(
+          c => `<option value="${c._id}">${esc(c.title)}</option>`
+        )
+        .join("");
+  } catch (e) {
+    show(e.message || "Failed to load instructor courses");
+  }
+}
+
+courseSelect?.addEventListener("change", async () => {
+  const courseId = courseSelect.value;
+  if (!courseId) {
+    courseStats.innerHTML = "";
+    return;
+  }
+
+  try {
+    courseStats.innerHTML = "Loading...";
+
+    const stats = await apiRequest(
+      `/analytics/course/${courseId}`,
+      { auth: true }
+    );
+
+    renderCourseStats(stats);
+  } catch (e) {
+    courseStats.innerHTML =
+      `<div class="small" style="color:crimson;">
+        ${e.message || "Failed to load analytics"}
+      </div>`;
+  }
+});
+
+function renderCourseStats({ enrolledCount, topStudents }) {
+  courseStats.innerHTML = `
+    <p><b>Enrolled students:</b> ${enrolledCount}</p>
+
+    <h5 style="margin:10px 0 6px;">🏆 Top 3 students</h5>
+
+    ${
+      topStudents.length
+        ? topStudents
+            .map(
+              (s, i) => `
+              <div class="listItem">
+                <b>#${i + 1}</b> ${esc(s.name)}
+                <span class="small">— score: ${s.score}</span>
+              </div>
+            `
+            )
+            .join("")
+        : `<div class="small">No quiz attempts yet.</div>`
+    }
+  `;
+}

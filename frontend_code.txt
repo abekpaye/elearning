@@ -784,11 +784,13 @@ function updateNav() {
 
   const signInLink = document.querySelector('[data-nav="signin"]');
   const dashboardLink = document.querySelector('[data-nav="dashboard"]');
+  const coursesLink = document.querySelector('[data-nav="courses"]');
   const logoutBtn = document.querySelector('[data-nav="logout"]');
   const roleBadge = document.querySelector('[data-nav="role"]');
 
   if (signInLink) signInLink.style.display = logged ? "none" : "inline-block";
   if (dashboardLink) dashboardLink.style.display = logged ? "inline-block" : "none";
+  if (coursesLink) coursesLink.style.display = logged ? "inline-block" : "none";
   if (logoutBtn) logoutBtn.style.display = logged ? "inline-block" : "none";
 
   if (roleBadge) {
@@ -1443,7 +1445,7 @@ document
     </a>
     <nav class="nav">
       <a class="nav__link" href="index.html">HOME</a>
-      <a class="nav__link" href="courses.html">COURSES</a>
+      <a class="nav__link" href="courses.html" data-nav="courses">COURSES</a>
       <a class="nav__link" href="dashboard.html" data-nav="dashboard" style="display:none;">PROGRESS</a>
       <a class="nav__link" href="login.html" data-nav="signin">SIGN IN</a>
       <span class="badge" data-nav="role" style="display:none;"></span>

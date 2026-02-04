@@ -18,7 +18,7 @@ export async function apiRequest(path, { method = "GET", body = null, auth = fal
   const data = await res.json().catch(() => ({}));
 
   if (res.status === 401) {
-    localStorage.removeItem("lernify_token");
+    localStorage.removeItem("learnify_token");
 
     if (!window.location.pathname.includes("login.html")) {
       const next = encodeURIComponent(
