@@ -199,11 +199,16 @@ async function load() {
     renderNavLessons(course.lessons || []);
     renderNavQuizzes(course.quizzes || []);
 
-    contentArea.innerHTML = `
-      <div class="small">
-        Select a lesson, quiz or Q&A from the left menu.
-      </div>
-    `;
+    if (isEnrolled && course.lessons?.length > 0) {
+      openLessonByIndex(0);
+    } else {
+      contentArea.innerHTML = `
+        <div class="small">
+          Select a lesson, quiz or Q&A from the left menu.
+        </div>
+      `;
+    }
+
   } catch (e) {
     show(e.message || "Failed to load course");
   }
