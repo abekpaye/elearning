@@ -4,6 +4,25 @@ import { isLoggedIn } from "../auth.js";
 const list = document.getElementById("coursesList");
 const msg = document.getElementById("msg");
 
+async function enroll(courseId) {
+  if (!isLoggedIn()) {
+    window.location.href = `login.html?next=${encodeURIComponent(`courses.html`)}`;
+    return;
+  }
+
+  try {
+    await apiRequest("/enrollments", {
+      method: "POST",
+      body: { courseId },
+      auth: true
+    });
+
+    window.location.href = `course.html?id=${courseId}`;
+  } catch (err) {
+    alert(err.message || "Enrollment failed");
+  }
+}
+
 function show(text, ok = false) {
   msg.textContent = text;
   msg.style.color = ok ? "green" : "crimson";
@@ -13,7 +32,6 @@ function escapeHtml(s = "") {
   return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
 }
 
-// ✅ Frontend auto-image mapping (no backend changes needed)
 function pickImage(course) {
   const t = (course.title || "").toLowerCase();
 
@@ -24,15 +42,6 @@ function pickImage(course) {
   if (t.includes("database") || t.includes("mongodb") || t.includes("sql")) return "assets/img/db.jpg";
 
   return "assets/img/default.jpg";
-}
-
-function goStart(courseId) {
-  if (!isLoggedIn()) {
-    // after login we can return user back to the course
-    window.location.href = `login.html?next=${encodeURIComponent(`course.html?id=${courseId}`)}`;
-    return;
-  }
-  window.location.href = `course.html?id=${courseId}`;
 }
 
 function render(courses) {
@@ -47,7 +56,6 @@ function render(courses) {
     const desc = escapeHtml(c.description || "No description");
     const img = pickImage(c);
 
-    // simple bullets (can be static, looks good for demo)
     const bullets = `
       <ul class="bullets">
         <li>Understand core programming concepts</li>
@@ -67,15 +75,16 @@ function render(courses) {
           <p class="courseHero__desc">${desc}</p>
           ${bullets}
 
-          <button class="btn startBtn" data-start="${id}">Start Now</button>
+          <button class="btn startBtn" data-enroll="${id}">Enroll</button>
         </div>
       </section>
     `;
   }).join("");
 
-  document.querySelectorAll("[data-start]").forEach(btn => {
-    btn.addEventListener("click", () => goStart(btn.dataset.start));
+  document.querySelectorAll("[data-enroll]").forEach(btn => {
+    btn.addEventListener("click", () => enroll(btn.dataset.enroll));
   });
+
 }
 
 async function loadCourses() {
