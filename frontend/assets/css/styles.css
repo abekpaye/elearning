@@ -394,3 +394,41 @@ body{
     font-size:48px;
   }
 }
+
+.courseLayout{
+  display:grid;
+  grid-template-columns: 320px 1fr;
+  gap:20px;
+}
+
+.courseNav{
+  height: fit-content;
+}
+
+.navSection{
+  margin-top:14px;
+}
+
+.navItem{
+  padding:8px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  font-size:14px;
+  margin-top:6px;
+  border:1px solid var(--border);
+  background:#fff;
+}
+
+.navItem:hover{
+  background:rgba(107,111,201,.08);
+}
+
+.courseContent{
+  min-height:400px;
+}
+
+@media (max-width: 900px){
+  .courseLayout{
+    grid-template-columns: 1fr;
+  }
+}

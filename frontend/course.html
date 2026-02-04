@@ -9,33 +9,40 @@
 <body>
   <div id="header"></div>
   <main class="main">
-    <div class="container">
-      <div id="msg" class="small" style="margin:10px 0;"></div>
-      <div class="card" id="courseBox">
-        <h2 id="courseTitle" style="margin:0 0 8px;">Loading...</h2>
-        <p id="courseDesc" class="small" style="margin:0 0 14px;"></p>
-        <div id="actions" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
-        <div class="card">
-          <h3 style="margin:0 0 10px;">Lessons</h3>
-          <div id="lessonsList" class="small"></div>
+    <div id="msg" class="small" style="margin:10px 0;"></div>
+
+    <div class="courseLayout">
+      <aside class="courseNav card">
+        <h3>Course content</h3>
+
+        <div class="navSection">
+          <b>Lessons</b>
+          <div id="navLessons"></div>
         </div>
-        <div class="card">
-          <h3 style="margin:0 0 10px;">Quizzes</h3>
-          <div id="quizzesList" class="small"></div>
+
+        <div class="navSection">
+          <b>Quizzes</b>
+          <div id="navQuizzes"></div>
         </div>
-      </div>
-      <div class="card" style="margin-top:16px;">
-        <h3 style="margin:0 0 10px;">Q&A</h3>
-        <div id="qaInfo" class="small" style="margin-bottom:10px;"></div>
-        <form id="askForm" class="form" style="max-width:640px;display:none;">
-          <input class="input" id="questionText" placeholder="Ask a question..." />
-          <button class="btn" type="submit">Submit question</button>
-        </form>
-        <div id="questionsList" style="margin-top:14px;"></div>
-      </div>
+
+        <div class="navSection">
+          <b>Q&A</b>
+          <button class="btnSecondary" id="openQA">Open Q&A</button>
+        </div>
+      </aside>
+
+      <section class="courseContent card">
+        <h2 id="courseTitle">Loading...</h2>
+        <p id="courseDesc" class="small"></p>
+
+        <div id="actions" style="margin:12px 0;"></div>
+
+        <div id="contentArea" style="margin-top:20px;">
+          <div class="small">Select a lesson or quiz from the left.</div>
+        </div>
+      </section>
     </div>
+
   </main>
   <div id="footer"></div>
   <script type="module">

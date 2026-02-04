@@ -1,13 +1,42 @@
 const express = require("express");
 const router = express.Router();
-const auth = require("../middleware/auth.middleware");
-const role = require("../middleware/role.middleware");
-const {
-  enrollToCourse,
-  updateProgress
-} = require("../controllers/enrollment.controller");
 
-router.post("/", auth, role("student"), enrollToCourse);
-router.patch("/progress", auth, role("student"), updateProgress);
+const Enrollment = require("../models/Enrollment");
+const authMiddleware = require("../middleware/auth.middleware"); 
+const Course = require("../models/Course");
+
+router.post("/", authMiddleware, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    const { courseId } = req.body;
+
+    const exists = await Enrollment.findOne({ studentId, courseId });
+    if (exists) {
+      return res.status(400).json({ message: "Already enrolled" });
+    }
+
+    const enrollment = await Enrollment.create({
+      studentId,
+      courseId
+    });
+
+    res.status(201).json(enrollment);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/my", authMiddleware, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    const enrollments = await Enrollment.find({ studentId })
+      .populate("courseId");
+
+    res.json(enrollments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;
