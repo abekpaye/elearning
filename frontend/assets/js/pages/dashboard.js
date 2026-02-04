@@ -40,7 +40,6 @@ function showPanel(role){
   showPanel(role);
 })();
 
-/* STUDENT: update progress */
 document.getElementById("btnProgress")?.addEventListener("click", async () => {
   const courseId = document.getElementById("studentCourseId").value.trim();
   const progress = Number(document.getElementById("studentProgress").value);
@@ -58,7 +57,6 @@ document.getElementById("btnProgress")?.addEventListener("click", async () => {
   }
 });
 
-/* INSTRUCTOR: create course */
 document.getElementById("createCourseForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const title = document.getElementById("cTitle").value.trim();
@@ -80,7 +78,6 @@ document.getElementById("createCourseForm")?.addEventListener("submit", async (e
   }
 });
 
-/* INSTRUCTOR: add lesson */
 document.getElementById("addLessonForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const courseId = document.getElementById("lCourseId").value.trim();
@@ -101,7 +98,6 @@ document.getElementById("addLessonForm")?.addEventListener("submit", async (e) =
   }
 });
 
-/* INSTRUCTOR: add quiz */
 document.getElementById("addQuizForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const courseId = document.getElementById("qCourseId").value.trim();
@@ -110,7 +106,7 @@ document.getElementById("addQuizForm")?.addEventListener("submit", async (e) => 
 
   try{
     show("");
-    const tasks = JSON.parse(tasksRaw); // teacher-friendly: shows you handle structure
+    const tasks = JSON.parse(tasksRaw); 
     await apiRequest(`/courses/${courseId}/quizzes`, {
       method:"POST",
       body:{ title, tasks },
@@ -123,7 +119,6 @@ document.getElementById("addQuizForm")?.addEventListener("submit", async (e) => 
   }
 });
 
-/* MENTOR: answer */
 document.getElementById("answerForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const courseId = document.getElementById("mCourseId").value.trim();
@@ -144,7 +139,6 @@ document.getElementById("answerForm")?.addEventListener("submit", async (e) => {
   }
 });
 
-/* ADMIN: delete user */
 document.getElementById("deleteUserForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const userId = document.getElementById("delUserId").value.trim();
@@ -159,7 +153,6 @@ document.getElementById("deleteUserForm")?.addEventListener("submit", async (e) 
   }
 });
 
-/* ADMIN: delete low attempts */
 document.getElementById("btnDeleteLow")?.addEventListener("click", async () => {
   try{
     show("");
@@ -170,7 +163,6 @@ document.getElementById("btnDeleteLow")?.addEventListener("click", async () => {
   }
 });
 
-/* ADMIN: analytics */
 document.getElementById("btnAnalytics")?.addEventListener("click", async () => {
   const box = document.getElementById("analyticsBox");
   try{

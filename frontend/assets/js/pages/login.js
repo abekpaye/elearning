@@ -23,19 +23,16 @@ form.addEventListener("submit", async (e) => {
       auth: false,
     });
 
-    const token = data.token;
-    const role = data.role || data.user?.role || "";
-
-    saveAuth(token, role);
-
-    // ✅ redirect to next page if provided
-    const params = new URLSearchParams(window.location.search);
-    const next = params.get("next");
+    // 🔥 сохраняем ТОЛЬКО токен
+    saveAuth(data.token);
 
     show("Login successful! Redirecting...", true);
+
+    // 👉 сразу на dashboard
     setTimeout(() => {
-      window.location.href = next ? next : "courses.html";
-    }, 600);
+      window.location.href = "dashboard.html";
+    }, 500);
+
   } catch (err) {
     show(err.message || "Login failed");
   }
