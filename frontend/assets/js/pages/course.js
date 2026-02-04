@@ -86,26 +86,15 @@ function renderActions(courseId) {
     return;
   }
 
-  if (getRole() === "student") {
+  if (getRole() === "student" && !isEnrolled) {
     const btn = document.createElement("button");
     btn.className = "btn";
-
-    if (isEnrolled) {
-      btn.textContent = "Open course";
-      btn.onclick = () => {
-        contentArea.innerHTML = `
-          <div class="small">
-            Select a lesson, quiz or Q&A from the left menu.
-          </div>
-        `;
-      };
-    } else {
-      btn.textContent = "Enroll";
-      btn.onclick = () => enroll(courseId);
-    }
-
+    btn.textContent = "Enroll";
+    btn.onclick = () => enroll(courseId);
     actionsEl.appendChild(btn);
   }
+
+  // if enrolled -> show nothing
 }
 
 
