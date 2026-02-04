@@ -11,6 +11,7 @@ const actionsEl = document.getElementById("actions");
 
 const navLessons = document.getElementById("navLessons");
 const navQuizzes = document.getElementById("navQuizzes");
+const openQA = document.getElementById("openQA");
 const contentArea = document.getElementById("contentArea");
 
 /* ---------- STATE ---------- */
@@ -52,6 +53,8 @@ async function checkEnrollment(courseId) {
   if (!isLoggedIn() || getRole() !== "student") return false;
 
   const data = await apiRequest("/enrollments/my", { auth: true });
+  if (!Array.isArray(data)) return false;
+
   return data.some(
     e => e.courseId?._id === courseId || e.courseId === courseId
   );
@@ -95,12 +98,18 @@ function renderActions(courseId) {
     btn.className = "btn";
 
     if (isEnrolled) {
-  return; // 🔥 просто ничего не рендерим
-}
-
-btn.textContent = "Enroll";
-btn.onclick = () => enroll(courseId);
-
+      btn.textContent = "Open course";
+      btn.onclick = () => {
+        contentArea.innerHTML = `
+          <div class="small">
+            Select a lesson, quiz or Q&A from the left menu.
+          </div>
+        `;
+      };
+    } else {
+      btn.textContent = "Enroll";
+      btn.onclick = () => enroll(courseId);
+    }
 
     actionsEl.appendChild(btn);
   }
@@ -202,12 +211,11 @@ async function load() {
     renderNavLessons(course.lessons || []);
     renderNavQuizzes(course.quizzes || []);
 
-    // 🔥 AUTO OPEN FIRST LESSON
-    if (course.lessons && course.lessons.length > 0) {
-      openLessonByIndex(0);
-    } else {
-      contentArea.innerHTML = `<div class="small">No lessons yet.</div>`;
-    }
+    contentArea.innerHTML = `
+      <div class="small">
+        Select a lesson, quiz or Q&A from the left menu.
+      </div>
+    `;
   } catch (e) {
     show(e.message || "Failed to load course");
   }
