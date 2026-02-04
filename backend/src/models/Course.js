@@ -1,89 +1,43 @@
 const mongoose = require("mongoose");
-
 const optionSchema = new mongoose.Schema(
   {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true
-    },
-    text: {
-      type: String,
-      required: true
-    }
+    text: { type: String, required: true }
   },
-  { _id: false }
+  { _id: true }
 );
 
 const taskSchema = new mongoose.Schema(
   {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true
-    },
-    question: {
-      type: String,
-      required: true
-    },
-    options: {
-      type: [optionSchema],
-      required: true
-    },
+    question: { type: String, required: true },
+    options: { type: [optionSchema], required: true },
     correctOptionId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true
     }
   },
-  { _id: false }
+  { _id: true }
 );
 
 const quizSchema = new mongoose.Schema(
   {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true
-    },
-    title: {
-      type: String,
-      required: true
-    },
-    tasks: {
-      type: [taskSchema],
-      default: []
-    }
+    title: { type: String, required: true },
+    tasks: { type: [taskSchema], default: [] }
   },
-  { _id: false }
+  { _id: true }
 );
 
 const lessonSchema = new mongoose.Schema(
   {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true
-    },
-    title: {
-      type: String,
-      required: true
-    },
-    content: {
-      type: String
-    },
-    videoUrl: {
-      type: String
-    },
-    orderNumber: {
-      type: Number
-    }
+    title: { type: String, required: true },
+    content: String,
+    videoUrl: String,
+    orderNumber: Number
   },
-  { _id: false }
+  { _id: true }
 );
 
 const courseSchema = new mongoose.Schema(
   {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true
-    },
-
     title: {
       type: String,
       required: true
@@ -108,14 +62,10 @@ const courseSchema = new mongoose.Schema(
     quizzes: {
       type: [quizSchema],
       default: []
-    },
-
-    createdAt: {
-      type: Date,
-      required: true
     }
   },
   {
+    timestamps: { createdAt: true, updatedAt: false },
     versionKey: false
   }
 );

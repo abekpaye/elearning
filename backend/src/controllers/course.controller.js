@@ -4,15 +4,12 @@ const QuizAttempt = require("../models/QuizAttempt");
 
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description, price } = req.body;
+    const { title, description } = req.body;
 
     const course = await Course.create({
       title,
       description,
-      price,
-      instructorId: req.user.id,
-      lessons: [],
-      quizzes: []
+      instructorId: req.user.id
     });
 
     res.status(201).json(course);
@@ -98,7 +95,7 @@ exports.addQuiz = async (req, res) => {
 exports.updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, price } = req.body;
+    const { title, description } = req.body;
 
     const course = await Course.findById(id);
     if (!course) {
@@ -113,7 +110,6 @@ exports.updateCourse = async (req, res) => {
 
     if (title !== undefined) course.title = title;
     if (description !== undefined) course.description = description;
-    if (price !== undefined) course.price = price;
 
     await course.save();
 
@@ -145,6 +141,18 @@ exports.deleteCourse = async (req, res) => {
     });
 
     res.json({ message: "Course and related data deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getMyCourses = async (req, res) => {
+  try {
+    const courses = await Course.find({
+      instructorId: req.user.id
+    });
+
+    res.json(courses);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
