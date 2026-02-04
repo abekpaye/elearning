@@ -4,7 +4,7 @@ module.exports = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "No token, authorization denied" });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   const token = authHeader.split(" ")[1];
@@ -14,6 +14,6 @@ module.exports = (req, res, next) => {
     req.user = decoded; 
     next();
   } catch (error) {
-    res.status(401).json({ message: "Token is not valid" });
+    res.status(401).json({ message: "Unauthorized" });
   }
 };

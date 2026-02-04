@@ -13,9 +13,9 @@ const { updateCourse, deleteCourse } = require("../controllers/course.controller
 const { getMyCourses } = require("../controllers/course.controller");
 
 router.post("/", auth, role("instructor"), createCourse);
-router.get("/", getCourses);
+router.get("/", auth, getCourses);
 router.get("/my", auth, role("instructor"), getMyCourses);
-router.get("/:id", getCourseById);
+router.get("/:id", auth, getCourseById);
 router.post("/:id/lessons", auth, role("instructor"), addLesson);
 router.post("/:id/quizzes", auth, role("instructor"), addQuiz);
 router.patch("/:id", auth, role("instructor"), updateCourse);

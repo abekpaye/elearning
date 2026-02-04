@@ -17,8 +17,24 @@ export async function apiRequest(path, { method = "GET", body = null, auth = fal
 
   const data = await res.json().catch(() => ({}));
 
+  if (res.status === 401) {
+    localStorage.removeItem("lernify_token");
+
+    if (!window.location.pathname.includes("login.html")) {
+      const next = encodeURIComponent(
+        window.location.pathname + window.location.search
+      );
+      window.location.href = `login.html?next=${next}`;
+    }
+
+    throw new Error("Unauthorized");
+  }
+
   if (!res.ok) {
-    const msg = data?.message || data?.error || `Request failed (${res.status})`;
+    const msg =
+      data?.message ||
+      data?.error ||
+      `Request failed (${res.status})`;
     throw new Error(msg);
   }
 

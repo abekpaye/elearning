@@ -21,7 +21,8 @@ exports.createCourse = async (req, res) => {
 exports.getCourses = async (req, res) => {
   try {
     const courses = await Course.find()
-    .select("-quizzes.tasks.correctOptionId");
+      .select("-quizzes.tasks.correctOptionId");
+
     res.json(courses);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,12 +32,33 @@ exports.getCourses = async (req, res) => {
 exports.getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
+    const role = req.user.role;
 
     const course = await Course.findById(id)
-    .select("-quizzes.tasks.correctOptionId");
+      .select("-quizzes.tasks.correctOptionId");
 
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
+    }
+
+    if (role === "instructor") {
+      if (course.instructorId.toString() !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    if (role === "student") {
+      const enrolled = await Enrollment.exists({
+        studentId: userId,
+        courseId: id
+      });
+
+      if (!enrolled) {
+        return res
+          .status(403)
+          .json({ message: "You are not enrolled in this course" });
+      }
     }
 
     res.json(course);
@@ -44,6 +66,7 @@ exports.getCourseById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.addLesson = async (req, res) => {
   try {

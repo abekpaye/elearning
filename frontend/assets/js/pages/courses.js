@@ -64,7 +64,7 @@ function render(courses) {
 async function loadCourses() {
   try {
     show("Loading...", true);
-    const data = await apiRequest("/courses");
+    const data = await apiRequest("/courses", { auth: true });
     const courses = data.courses || data;
 
     enrolledIds = await loadEnrollments();
