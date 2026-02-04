@@ -8,97 +8,128 @@
 </head>
 <body>
   <div id="header"></div>
+
   <main class="main">
     <div class="container">
       <h2 style="margin:0 0 6px;">Dashboard</h2>
       <p class="small" id="roleLine" style="margin:0 0 14px;"></p>
       <div id="msg" class="small" style="margin:10px 0;"></div>
+
+      <!-- STUDENT -->
       <section class="card" id="studentBox" style="display:none;">
         <h3 style="margin:0 0 10px;">Student panel</h3>
         <div class="form" style="max-width:520px;">
-          <input class="input" id="studentCourseId" placeholder="Course ID (for progress update)" />
-          <input class="input" id="studentProgress" placeholder="Progress (0-100)" type="number" min="0" max="100" />
+          <input
+            class="input"
+            id="studentCourseId"
+            placeholder="Course ID (for progress update)"
+          />
+          <input
+            class="input"
+            id="studentProgress"
+            placeholder="Progress (0-100)"
+            type="number"
+            min="0"
+            max="100"
+          />
           <button class="btn" id="btnProgress">Update progress</button>
         </div>
         <div class="small" style="margin-top:10px;">
           Tip: enroll from Courses page, then update your progress here.
         </div>
       </section>
-      <section class="card" id="instructorBox" style="display:none; margin-top:16px;">
+
+      <!-- INSTRUCTOR -->
+      <section
+        class="card"
+        id="instructorBox"
+        style="display:none; margin-top:16px;"
+      >
         <h3 style="margin:0 0 10px;">Instructor panel</h3>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div class="card" style="background:#fff;">
             <h4 style="margin:0 0 10px;">Create course</h4>
             <form class="form" id="createCourseForm">
               <input class="input" id="cTitle" placeholder="Title" required />
-              <input class="input" id="cDesc" placeholder="Description" required />
-              <input class="input" id="cPrice" placeholder="Price (number)" type="number" min="0" required />
-              <input class="input" id="cMentorId" placeholder="Mentor ID" required />
+              <input
+                class="input"
+                id="cDesc"
+                placeholder="Description"
+                required
+              />
+              <input
+                class="input"
+                id="cPrice"
+                placeholder="Price (number)"
+                type="number"
+                min="0"
+                required
+              />
               <button class="btn" type="submit">Create</button>
             </form>
           </div>
+
           <div class="card" style="background:#fff;">
             <h4 style="margin:0 0 10px;">Add lesson to course</h4>
             <form class="form" id="addLessonForm">
-              <input class="input" id="lCourseId" placeholder="Course ID" required />
-              <input class="input" id="lTitle" placeholder="Lesson title" required />
-              <input class="input" id="lContent" placeholder="Lesson content" required />
+              <input
+                class="input"
+                id="lCourseId"
+                placeholder="Course ID"
+                required
+              />
+              <input
+                class="input"
+                id="lTitle"
+                placeholder="Lesson title"
+                required
+              />
+              <input
+                class="input"
+                id="lContent"
+                placeholder="Lesson content"
+                required
+              />
               <button class="btn" type="submit">Add lesson</button>
             </form>
           </div>
         </div>
+
         <div class="card" style="background:#fff; margin-top:16px;">
           <h4 style="margin:0 0 10px;">Add quiz to course</h4>
           <form class="form" id="addQuizForm" style="max-width:700px;">
-            <input class="input" id="qCourseId" placeholder="Course ID" required />
-            <input class="input" id="qTitle" placeholder="Quiz title" required />
-            <textarea class="input" id="qTasks" placeholder='Tasks JSON (example: [{"question":"...","options":["A","B"],"correctAnswer":"A"}] )' style="min-height:90px;" required></textarea>
+            <input
+              class="input"
+              id="qCourseId"
+              placeholder="Course ID"
+              required
+            />
+            <input
+              class="input"
+              id="qTitle"
+              placeholder="Quiz title"
+              required
+            />
+            <textarea
+              class="input"
+              id="qTasks"
+              placeholder='Tasks JSON (example: [{"question":"...","options":["A","B"],"correctAnswer":"A"}])'
+              style="min-height:90px;"
+              required
+            ></textarea>
             <button class="btn" type="submit">Add quiz</button>
           </form>
           <div class="small" style="margin-top:8px;">
-            We send tasks as an array (embedded) → fits your course model.
+            Tasks are stored as an embedded array inside the course.
           </div>
-        </div>
-      </section>
-      <section class="card" id="mentorBox" style="display:none; margin-top:16px;">
-        <h3 style="margin:0 0 10px;">Mentor panel</h3>
-        <form class="form" id="answerForm" style="max-width:640px;">
-          <input class="input" id="mCourseId" placeholder="Course ID" required />
-          <input class="input" id="mQuestionId" placeholder="Question ID" required />
-          <input class="input" id="mAnswerText" placeholder="Answer text" required />
-          <button class="btn" type="submit">Send answer</button>
-        </form>
-        <div class="small" style="margin-top:10px;">
-          Endpoint: POST /api/questions/course/:courseId/question/:questionId/answer
-        </div>
-      </section>
-      <section class="card" id="adminBox" style="display:none; margin-top:16px;">
-        <h3 style="margin:0 0 10px;">Admin panel</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div class="card" style="background:#fff;">
-            <h4 style="margin:0 0 10px;">Delete user</h4>
-            <form class="form" id="deleteUserForm">
-              <input class="input" id="delUserId" placeholder="User ID" required />
-              <button class="btn" type="submit">Delete user</button>
-            </form>
-          </div>
-          <div class="card" style="background:#fff;">
-            <h4 style="margin:0 0 10px;">Delete low quiz attempts</h4>
-            <button class="btn" id="btnDeleteLow">Delete low (score &lt; 50)</button>
-            <div class="small" style="margin-top:8px;">
-              Endpoint: DELETE /api/quizzes/attempts/low
-            </div>
-          </div>
-        </div>
-        <div class="card" style="background:#fff; margin-top:16px;">
-          <h4 style="margin:0 0 10px;">Course engagement analytics</h4>
-          <button class="btn" id="btnAnalytics">Load analytics</button>
-          <div id="analyticsBox" style="margin-top:12px;"></div>
         </div>
       </section>
     </div>
   </main>
+
   <div id="footer"></div>
+
   <script type="module">
     import { initLayout } from "./assets/js/ui.js";
     initLayout();

@@ -8,6 +8,6 @@ const {
 } = require("../controllers/quiz.controller");
 
 router.post("/attempts", auth, role("student"), createAttempt);
-router.delete("/attempts/low", auth, role("admin"), deleteLowScores);
+router.delete("/attempts/low", auth, role("instructor"), deleteLowScores);
 
 module.exports = router;

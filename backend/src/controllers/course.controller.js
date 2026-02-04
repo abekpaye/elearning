@@ -4,17 +4,15 @@ const QuizAttempt = require("../models/QuizAttempt");
 
 exports.createCourse = async (req, res) => {
   try {
-    const { title, description, price, mentorId } = req.body;
+    const { title, description, price } = req.body;
 
     const course = await Course.create({
       title,
       description,
       price,
       instructorId: req.user.id,
-      mentorId,
       lessons: [],
-      quizzes: [],
-      questions: []
+      quizzes: []
     });
 
     res.status(201).json(course);
@@ -100,7 +98,7 @@ exports.addQuiz = async (req, res) => {
 exports.updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, price, mentorId } = req.body;
+    const { title, description, price } = req.body;
 
     const course = await Course.findById(id);
     if (!course) {
@@ -108,8 +106,7 @@ exports.updateCourse = async (req, res) => {
     }
 
     if (
-      course.instructorId.toString() !== req.user.id &&
-      req.user.role !== "admin"
+      course.instructorId.toString() !== req.user.id
     ) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -117,7 +114,6 @@ exports.updateCourse = async (req, res) => {
     if (title !== undefined) course.title = title;
     if (description !== undefined) course.description = description;
     if (price !== undefined) course.price = price;
-    if (mentorId !== undefined) course.mentorId = mentorId;
 
     await course.save();
 
@@ -137,8 +133,7 @@ exports.deleteCourse = async (req, res) => {
     }
 
     if (
-      course.instructorId.toString() !== req.user.id &&
-      req.user.role !== "admin"
+      course.instructorId.toString() !== req.user.id
     ) {
       return res.status(403).json({ message: "Access denied" });
     }

@@ -16,7 +16,7 @@ router.get("/", getCourses);
 router.get("/:id", getCourseById);
 router.post("/:id/lessons", auth, role("instructor"), addLesson);
 router.post("/:id/quizzes", auth, role("instructor"), addQuiz);
-router.patch("/:id", auth, role("instructor", "admin"), updateCourse);
-router.delete("/:id", auth, role("instructor", "admin"), deleteCourse);
+router.patch("/:id", auth, role("instructor"), updateCourse);
+router.delete("/:id", auth, role("instructor"), deleteCourse);
 
 module.exports = router

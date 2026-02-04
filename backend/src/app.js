@@ -6,7 +6,6 @@ const courseRoutes = require("./routes/course.routes");
 const enrollmentRoutes = require("./routes/enrollment.routes");
 const quizRoutes = require("./routes/quiz.routes");
 const userRoutes = require("./routes/user.routes");
-const questionRoutes = require("./routes/question.routes");
 const analyticsRoutes = require("./routes/analytics.routes");
 
 const path = require("path");
@@ -20,7 +19,6 @@ app.use("/api/enrollments", enrollmentRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/quizzes", quizRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/questions", questionRoutes);
 app.use("/api/analytics", analyticsRoutes);
 
 const frontendPath = path.join(__dirname, "../../frontend");

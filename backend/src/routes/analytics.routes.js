@@ -9,7 +9,7 @@ const {
 router.get(
   "/course-engagement",
   auth,
-  role("admin"),
+  role("instructor"),
   getCourseEngagement
 );
 
