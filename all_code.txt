@@ -1,0 +1,2111 @@
+﻿===== C:\Users\baqyt\Downloads\elearning\backend\src\config\db.js =====
+const mongoose = require("mongoose");
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected");
+  } catch (err) {
+    console.error("MongoDB connection error:", err.message);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;
+===== C:\Users\baqyt\Downloads\elearning\backend\src\controllers\analytics.controller.js =====
+const mongoose = require("mongoose");
+const Enrollment = require("../models/Enrollment");
+const Course = require("../models/Course");
+const QuizAttempt = require("../models/QuizAttempt");
+
+exports.getCourseEngagement = async (req, res) => {
+  try {
+    const { courseId } = req.query;
+
+    const instructorCourses = await Course.find(
+      { instructorId: req.user.id },
+      { _id: 1 }
+    );
+
+    const courseIds = instructorCourses.map(c => c._id);
+
+    const pipeline = [
+      {
+        $match: {
+          courseId: { $in: courseIds }
+        }
+      }
+    ];
+
+    if (courseId) {
+      pipeline.push({
+        $match: { courseId: new mongoose.Types.ObjectId(courseId) }
+      });
+    }
+
+    pipeline.push(
+      {
+        $group: {
+          _id: "$courseId",
+          studentsCount: { $sum: 1 },
+          avgProgress: { $avg: "$progress" },
+          activeStudents: {
+            $sum: {
+              $cond: [{ $gte: ["$progress", 50] }, 1, 0]
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "courses",
+          localField: "_id",
+          foreignField: "_id",
+          as: "course"
+        }
+      },
+      { $unwind: "$course" },
+      {
+        $project: {
+          _id: 0,
+          courseId: "$course._id",
+          courseTitle: "$course.title",
+          studentsCount: 1,
+          avgProgress: { $round: ["$avgProgress", 1] },
+          activeStudents: 1
+        }
+      },
+      { $sort: { studentsCount: -1 } }
+    );
+
+    const analytics = await Enrollment.aggregate(pipeline);
+
+
+    res.json(analytics);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getTopStudentsByCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findOne(
+      { _id: courseId, instructorId: req.user.id },
+      { quizzes: 1 }
+    );
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found or access denied" });
+    }
+
+    const quizIds = course.quizzes.map(q => q._id);
+
+    const pipeline = [
+      {
+        $match: {
+          quizId: { $in: quizIds }
+        }
+      },
+      {
+        $group: {
+          _id: "$studentId",
+          avgScore: { $avg: "$score" },
+          attempts: { $sum: 1 }
+        }
+      },
+      { $sort: { avgScore: -1 } },
+      { $limit: 3 }, // рџ”Ґ РўР Р•Р‘РЈР•РњР«Р™ РўРћРџ-3
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "student"
+        }
+      },
+      { $unwind: "$student" },
+      {
+        $project: {
+          _id: 0,
+          studentId: "$student._id",
+          name: "$student.name",
+          email: "$student.email",
+          avgScore: { $round: ["$avgScore", 1] },
+          attempts: 1
+        }
+      }
+    ];
+
+    const topStudents = await QuizAttempt.aggregate(pipeline);
+    res.json(topStudents);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+===== C:\Users\baqyt\Downloads\elearning\backend\src\controllers\auth.controller.js =====
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+exports.register = async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!email || !password) {
+  return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      passwordHash,
+      role: "student"
+    });
+
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({ token });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+===== C:\Users\baqyt\Downloads\elearning\backend\src\controllers\course.controller.js =====
+const Course = require("../models/Course");
+const Enrollment = require("../models/Enrollment");
+const QuizAttempt = require("../models/QuizAttempt");
+
+exports.createCourse = async (req, res) => {
+  try {
+    const { title, description } = req.body;
+
+    const course = await Course.create({
+      title,
+      description,
+      instructorId: req.user.id
+    });
+
+    res.status(201).json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getCourses = async (req, res) => {
+  try {
+    const courses = await Course.find()
+      .select("-quizzes.tasks.correctOptionId");
+
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getCourseById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    const course = await Course.findById(id)
+      .select("-quizzes.tasks.correctOptionId");
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    if (role === "instructor") {
+      if (course.instructorId.toString() !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    if (role === "student") {
+      const enrolled = await Enrollment.exists({
+        studentId: userId,
+        courseId: id
+      });
+
+      if (!enrolled) {
+        return res
+          .status(403)
+          .json({ message: "You are not enrolled in this course" });
+      }
+    }
+
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.addLesson = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content, videoUrl, orderNumber } = req.body;
+
+    const course = await Course.findOneAndUpdate(
+      { _id: id, instructorId: req.user.id },
+      { $push: { lessons: { title, content, videoUrl, orderNumber } } },
+      { new: true }
+    );
+
+    if (!course) {
+      return res.status(403).json({ message: "Access denied or course not found" });
+    }
+
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.addQuiz = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, tasks } = req.body;
+
+    const course = await Course.findOneAndUpdate(
+      { _id: id, instructorId: req.user.id },
+      {
+        $push: {
+          quizzes: { title, tasks }
+        }
+      },
+      { new: true }
+    );
+
+    if (!course) {
+      return res
+        .status(403)
+        .json({ message: "Access denied or course not found" });
+    }
+
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.updateCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description } = req.body;
+
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    if (
+      course.instructorId.toString() !== req.user.id
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (title !== undefined) course.title = title;
+    if (description !== undefined) course.description = description;
+
+    await course.save();
+
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deleteCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    if (
+      course.instructorId.toString() !== req.user.id
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    await Course.findByIdAndDelete(id);
+    await Enrollment.deleteMany({ courseId: id });
+    await QuizAttempt.deleteMany({
+      quizId: { $in: course.quizzes.map(q => q._id) }
+    });
+
+    res.json({ message: "Course and related data deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getMyCourses = async (req, res) => {
+  try {
+    const courses = await Course.find({
+      instructorId: req.user.id
+    });
+
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+===== C:\Users\baqyt\Downloads\elearning\backend\src\controllers\quiz.controller.js =====
+const QuizAttempt = require("../models/QuizAttempt");
+const Course = require("../models/Course");
+const Enrollment = require("../models/Enrollment");
+const mongoose = require("mongoose");
+
+exports.createAttempt = async (req, res) => {
+  try {
+    const { quizId, answers } = req.body;
+    // answers: [{ taskId: "...", selectedOptionId: "..." }, ...]
+
+    const studentId = req.user.id;
+
+    if (!quizId || !Array.isArray(answers)) {
+      return res.status(400).json({
+        message: "quizId and answers array are required"
+      });
+    }
+
+    // 1) Find course that contains this quiz (we need correctOptionId for checking)
+    const course = await Course.findOne(
+      { "quizzes._id": quizId },
+      { quizzes: 1 }
+    );
+
+    if (!course) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // 2) Get the quiz subdocument
+    const quiz = course.quizzes.id(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // 3) Check enrollment
+    const enrollment = await Enrollment.findOne({
+      studentId,
+      courseId: course._id
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ message: "Not enrolled in this course" });
+    }
+
+    // 4) Build map: taskId -> selectedOptionId
+    const answerMap = new Map(
+      answers.map((a) => [String(a.taskId), String(a.selectedOptionId)])
+    );
+
+    // 5) Check each question and create results
+    const results = quiz.tasks.map((t) => {
+      const taskId = String(t._id);
+      const selectedOptionId = answerMap.get(taskId) || null;
+      const correctOptionId = String(t.correctOptionId);
+
+      const isCorrect =
+        selectedOptionId && selectedOptionId === correctOptionId;
+
+      return {
+        taskId,
+        selectedOptionId,
+        correctOptionId,
+        isCorrect
+      };
+    });
+
+    // 6) Score: 20 points per correct answer
+    const correctCount = results.filter((r) => r.isCorrect).length;
+    const score = correctCount * 20;
+
+    // 7) Save attempt to quizAttempts
+    await QuizAttempt.create({
+      studentId,
+      quizId,
+      score
+    });
+
+    // 8) Update progress: average score across all quizzes in this course
+    const quizIds = course.quizzes.map((q) => q._id);
+
+    const agg = await QuizAttempt.aggregate([
+      {
+        $match: {
+          studentId: new mongoose.Types.ObjectId(studentId),
+          quizId: { $in: quizIds }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          avgScore: { $avg: "$score" }
+        }
+      }
+    ]);
+
+    const progress = agg.length ? Math.round(agg[0].avgScore) : 0;
+
+    enrollment.progress = progress;
+    await enrollment.save();
+
+    // 9) Return data so frontend can show correct/wrong after submit
+    return res.status(201).json({
+      message: "Attempt saved, progress updated",
+      score,
+      progress,
+      results
+    });
+    
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+===== C:\Users\baqyt\Downloads\elearning\backend\src\middleware\auth.middleware.js =====
+const jwt = require("jsonwebtoken");
+
+module.exports = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; 
+    next();
+  } catch (error) {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+};
+===== C:\Users\baqyt\Downloads\elearning\backend\src\middleware\role.middleware.js =====
+module.exports = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    next();
+  };
+};
+===== C:\Users\baqyt\Downloads\elearning\backend\src\models\Course.js =====
+const mongoose = require("mongoose");
+const optionSchema = new mongoose.Schema(
+  {
+    text: { type: String, required: true }
+  },
+  { _id: true }
+);
+
+const taskSchema = new mongoose.Schema(
+  {
+    question: { type: String, required: true },
+    options: { type: [optionSchema], required: true },
+    correctOptionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    }
+  },
+  { _id: true }
+);
+
+const quizSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    tasks: { type: [taskSchema], default: [] }
+  },
+  { _id: true }
+);
+
+const lessonSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    content: String,
+    videoUrl: String,
+    orderNumber: Number
+  },
+  { _id: true }
+);
+
+const courseSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true
+    },
+
+    description: {
+      type: String,
+      required: true
+    },
+
+    instructorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+
+    lessons: {
+      type: [lessonSchema],
+      default: []
+    },
+
+    quizzes: {
+      type: [quizSchema],
+      default: []
+    }
+  },
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    versionKey: false
+  }
+);
+
+module.exports = mongoose.model("Course", courseSchema);
+===== C:\Users\baqyt\Downloads\elearning\backend\src\models\Enrollment.js =====
+const mongoose = require("mongoose");
+
+const enrollmentSchema = new mongoose.Schema(
+  {
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+      required: true
+    },
+    progress: {
+      type: Number,
+      default: 0
+    }
+  },
+  {
+    timestamps: false,
+    versionKey: false
+  }
+);
+
+enrollmentSchema.index({ studentId: 1, courseId: 1 }, { unique: true });
+enrollmentSchema.index({ courseId: 1 });
+
+module.exports = mongoose.model("Enrollment", enrollmentSchema);
+===== C:\Users\baqyt\Downloads\elearning\backend\src\models\QuizAttempt.js =====
+const mongoose = require("mongoose");
+
+const quizAttemptSchema = new mongoose.Schema(
+  {
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    quizId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    score: {
+      type: Number,
+      required: true
+    }
+  },
+  {
+    timestamps: false,
+    versionKey: false
+  }
+   
+);
+
+quizAttemptSchema.index({ quizId: 1, score: -1 });
+
+module.exports = mongoose.model("QuizAttempt", quizAttemptSchema, "quizAttempts");
+===== C:\Users\baqyt\Downloads\elearning\backend\src\models\User.js =====
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      minlength: 2,
+      maxlength: 50
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      match: [/^\S+@\S+\.\S+$/, "Invalid email format"]
+    },
+    passwordHash: {
+      type: String,
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ["student", "instructor"],
+      default: "student"
+    }
+  },
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    versionKey: false
+  }
+);
+
+module.exports = mongoose.model("User", userSchema);
+===== C:\Users\baqyt\Downloads\elearning\backend\src\routes\analytics.routes.js =====
+const express = require("express");
+const router = express.Router();
+const auth = require("../middleware/auth.middleware");
+const role = require("../middleware/role.middleware");
+
+const {
+  getCourseEngagement,
+  getTopStudentsByCourse
+} = require("../controllers/analytics.controller");
+
+router.get(
+  "/course-engagement",
+  auth,
+  role("instructor"),
+  getCourseEngagement
+);
+
+router.get(
+  "/courses/:courseId/top-students",
+  auth,
+  role("instructor"),
+  getTopStudentsByCourse
+);
+
+module.exports = router;
+===== C:\Users\baqyt\Downloads\elearning\backend\src\routes\auth.routes.js =====
+const express = require("express");
+const router = express.Router();
+const { register, login } = require("../controllers/auth.controller");
+
+router.post("/register", register);
+router.post("/login", login);
+
+module.exports = router;
+===== C:\Users\baqyt\Downloads\elearning\backend\src\routes\course.routes.js =====
+const express = require("express");
+const router = express.Router();
+const auth = require("../middleware/auth.middleware");
+const role = require("../middleware/role.middleware");
+const {
+  createCourse,
+  getCourses,
+  getCourseById,
+  addLesson,
+  addQuiz
+} = require("../controllers/course.controller");
+const { updateCourse, deleteCourse } = require("../controllers/course.controller");
+const { getMyCourses } = require("../controllers/course.controller");
+
+router.post("/", auth, role("instructor"), createCourse);
+router.get("/", auth, getCourses);
+router.get("/my", auth, role("instructor"), getMyCourses);
+router.get("/:id", auth, getCourseById);
+router.post("/:id/lessons", auth, role("instructor"), addLesson);
+router.post("/:id/quizzes", auth, role("instructor"), addQuiz);
+router.patch("/:id", auth, role("instructor"), updateCourse);
+router.delete("/:id", auth, role("instructor"), deleteCourse);
+
+module.exports = router
+===== C:\Users\baqyt\Downloads\elearning\backend\src\routes\enrollment.routes.js =====
+const express = require("express");
+const router = express.Router();
+
+const Enrollment = require("../models/Enrollment");
+const authMiddleware = require("../middleware/auth.middleware"); 
+const Course = require("../models/Course");
+const role = require("../middleware/role.middleware");
+
+router.post("/", authMiddleware, role("student"), async (req, res) => {
+  try {
+    const studentId = req.user.id;
+    const { courseId } = req.body;
+
+    const exists = await Enrollment.findOne({ studentId, courseId });
+    if (exists) {
+      return res.status(400).json({ message: "Already enrolled" });
+    }
+
+    const enrollment = await Enrollment.create({
+      studentId,
+      courseId
+    });
+
+    res.status(201).json(enrollment);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/my", authMiddleware, async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    const enrollments = await Enrollment.find({ studentId })
+      .populate("courseId");
+
+    res.json(enrollments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/:courseId", authMiddleware, async (req, res) => {
+  try {
+    const enrollment = await Enrollment.findOne({
+      studentId: req.user.id,
+      courseId: req.params.courseId
+    });
+
+    res.json(enrollment);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+module.exports = router;
+===== C:\Users\baqyt\Downloads\elearning\backend\src\routes\quiz.routes.js =====
+const express = require("express");
+const router = express.Router();
+const auth = require("../middleware/auth.middleware");
+const role = require("../middleware/role.middleware");
+const {
+  createAttempt
+} = require("../controllers/quiz.controller");
+
+router.post("/attempts", auth, role("student"), createAttempt);
+
+module.exports = router;
+===== C:\Users\baqyt\Downloads\elearning\backend\src\app.js =====
+const express = require("express");
+const cors = require("cors");
+
+const authRoutes = require("./routes/auth.routes");
+const courseRoutes = require("./routes/course.routes");
+const enrollmentRoutes = require("./routes/enrollment.routes");
+const quizRoutes = require("./routes/quiz.routes");
+const analyticsRoutes = require("./routes/analytics.routes");
+
+const path = require("path");
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/auth", authRoutes);
+app.use("/api/enrollments", enrollmentRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/quizzes", quizRoutes);
+app.use("/api/analytics", analyticsRoutes);
+
+const frontendPath = path.join(__dirname, "../../frontend");
+app.use(express.static(frontendPath));
+
+app.use((req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
+
+module.exports = app;
+===== C:\Users\baqyt\Downloads\elearning\backend\server.js =====
+require("dotenv").config();
+const app = require("./src/app");
+const connectDB = require("./src/config/db");
+
+connectDB();
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\pages\course.js =====
+// frontend/assets/js/pages/course.js
+import { apiRequest } from "../api.js";
+import { getRole, isLoggedIn } from "../auth.js";
+
+const msg = document.getElementById("msg");
+
+const titleEl = document.getElementById("courseTitle");
+const descEl = document.getElementById("courseDesc");
+const actionsEl = document.getElementById("actions");
+
+const navLessons = document.getElementById("navLessons");
+const navQuizzes = document.getElementById("navQuizzes");
+const contentArea = document.getElementById("contentArea");
+
+let currentCourse = null;
+let isEnrolled = false;
+
+/* ---------- helpers ---------- */
+
+function show(text, ok = false) {
+  msg.textContent = text;
+  msg.style.color = ok ? "green" : "crimson";
+}
+
+function escapeHtml(s = "") {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function getCourseId() {
+  return new URLSearchParams(window.location.search).get("id");
+}
+
+function getYoutubeEmbed(url) {
+  if (!url) return null;
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
+  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+}
+
+async function checkEnrollment(courseId) {
+  if (!isLoggedIn() || getRole() !== "student") return false;
+
+  const data = await apiRequest("/enrollments/my", { auth: true });
+  if (!Array.isArray(data)) return false;
+
+  return data.some((e) => e.courseId?._id === courseId || e.courseId === courseId);
+}
+
+/* ---------- enroll UI ---------- */
+
+async function enroll(courseId) {
+  try {
+    await apiRequest("/enrollments", {
+      method: "POST",
+      body: { courseId },
+      auth: true
+    });
+
+    isEnrolled = true;
+    renderActions(courseId);
+    openLessonByIndex(0);
+    show("Enrolled successfully!", true);
+  } catch (e) {
+    show(e.message || "Enroll failed");
+  }
+}
+
+function renderActions(courseId) {
+  actionsEl.innerHTML = "";
+
+  if (!isLoggedIn()) {
+    actionsEl.innerHTML = `
+      <a class="btn" href="login.html?next=${encodeURIComponent(`course.html?id=${courseId}`)}">
+        Login to enroll
+      </a>
+    `;
+    return;
+  }
+
+  if (getRole() === "student" && !isEnrolled) {
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.textContent = "Enroll";
+    btn.onclick = () => enroll(courseId);
+    actionsEl.appendChild(btn);
+  }
+}
+
+/* ---------- lessons ---------- */
+
+function openLessonByIndex(index = 0) {
+  const l = currentCourse?.lessons?.[index];
+  if (!l) return;
+
+  const embedUrl = getYoutubeEmbed(l.videoUrl);
+
+  contentArea.innerHTML = `
+    <h3>${escapeHtml(l.title)}</h3>
+
+    ${
+      embedUrl
+        ? `
+          <div style="margin:16px 0;">
+            <iframe
+              width="100%"
+              height="400"
+              src="${embedUrl}"
+              title="Lesson video"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          </div>
+        `
+        : ""
+    }
+
+    <p class="small">${escapeHtml(l.content || "")}</p>
+  `;
+}
+
+function renderNavLessons(lessons = []) {
+  navLessons.innerHTML = lessons.length
+    ? lessons
+        .map(
+          (l, i) => `
+        <div class="navItem" data-lesson="${i}">
+          Lesson ${i + 1}: ${escapeHtml(l.title)}
+        </div>
+      `
+        )
+        .join("")
+    : `<div class="small">No lessons</div>`;
+
+  navLessons.querySelectorAll("[data-lesson]").forEach((el) => {
+    el.onclick = () => openLessonByIndex(Number(el.dataset.lesson));
+  });
+}
+
+/* ---------- quizzes: stats / lock / submit ---------- */
+
+async function loadQuizStats(quizId) {
+  try {
+    return await apiRequest(`/quizzes/attempts/my?quizId=${quizId}`, { auth: true });
+  } catch {
+    return { latestAttempt: null, attemptsCount: 0 };
+  }
+}
+
+function renderLockedQuizView(q, stats, onRetake) {
+  const attempts = Number(stats?.attemptsCount || 0);
+  const last = stats?.latestAttempt?.score;
+
+  contentArea.innerHTML = `
+    <h3>${escapeHtml(q.title)}</h3>
+    <div class="small" style="margin-top:8px;">
+      This quiz is already submitted.
+      ${typeof last === "number" ? ` Last score: <b>${last}</b>.` : ""}
+      ${attempts > 0 ? ` Attempts: <b>${attempts}</b>.` : ""}
+    </div>
+
+    <div style="margin-top:14px;">
+      <button class="btn" id="btnRetake">Retake</button>
+    </div>
+  `;
+
+  document.getElementById("btnRetake").onclick = onRetake;
+}
+
+function renderQuizForm(q, onSubmit) {
+  const tasks = q.tasks || [];
+
+  contentArea.innerHTML = `
+    <h3>${escapeHtml(q.title)}</h3>
+
+    <form id="quizForm" style="margin-top:14px;">
+      ${tasks
+        .map((t, idx) => {
+          const opts = (t.options || [])
+            .map(
+              (o) => `
+              <label class="answer" style="display:block; cursor:pointer;">
+                <input type="radio" name="q_${t._id}" value="${o._id}" />
+                ${escapeHtml(o.text)}
+              </label>
+            `
+            )
+            .join("");
+
+          return `
+            <div class="qBox" data-task="${t._id}">
+              <div class="qTitle">${idx + 1}. ${escapeHtml(t.question)}</div>
+              ${opts}
+              <div class="small" data-feedback style="margin-top:6px;"></div>
+            </div>
+          `;
+        })
+        .join("")}
+
+      <button class="btn" type="submit" style="margin-top:10px;">Submit</button>
+      <div class="small" id="quizMsg" style="margin-top:10px;"></div>
+    </form>
+  `;
+
+  document.getElementById("quizForm").addEventListener("submit", onSubmit);
+}
+
+function markQuizResults(results = []) {
+  results.forEach((r) => {
+    const box = contentArea.querySelector(`.qBox[data-task="${r.taskId}"]`);
+    if (!box) return;
+
+    const feedback = box.querySelector("[data-feedback]");
+    if (!feedback) return;
+
+    if (r.isCorrect) {
+      feedback.textContent = "вњ… Correct";
+      feedback.style.color = "green";
+    } else {
+      feedback.textContent = "вќЊ Wrong";
+      feedback.style.color = "crimson";
+    }
+  });
+}
+
+async function openQuizByIndex(index = 0) {
+  const q = currentCourse?.quizzes?.[index];
+  if (!q) return;
+
+  const canSubmit = isLoggedIn() && getRole() === "student" && isEnrolled;
+
+  if (!canSubmit) {
+    contentArea.innerHTML = `
+      <h3>${escapeHtml(q.title)}</h3>
+      <div class="small">Login as student and enroll to take this quiz.</div>
+    `;
+    return;
+  }
+
+  const stats = await loadQuizStats(q._id);
+  const hasAttempts = Number(stats?.attemptsCount || 0) > 0;
+
+  if (hasAttempts) {
+    renderLockedQuizView(q, stats, () => {
+      renderQuizForm(q, handleSubmit);
+    });
+    return;
+  }
+
+  renderQuizForm(q, handleSubmit);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    const quizMsg = document.getElementById("quizMsg");
+    quizMsg.textContent = "";
+    quizMsg.style.color = "crimson";
+
+    const answers = (q.tasks || []).map((t) => {
+      const checked = contentArea.querySelector(`input[name="q_${t._id}"]:checked`);
+      return { taskId: t._id, selectedOptionId: checked ? checked.value : null };
+    });
+
+    if (answers.some((a) => !a.selectedOptionId)) {
+      quizMsg.textContent = "Please answer all questions.";
+      return;
+    }
+
+    try {
+      const resp = await apiRequest("/quizzes/attempts", {
+        method: "POST",
+        body: { quizId: q._id, answers },
+        auth: true
+      });
+
+      // show correct/wrong
+      markQuizResults(resp.results || []);
+      quizMsg.textContent = `Submitted! Score: ${resp.score}. Progress: ${resp.progress}.`;
+      quizMsg.style.color = "green";
+
+      // then lock (and refresh will also be locked)
+      const newStats = await loadQuizStats(q._id);
+      setTimeout(() => {
+        renderLockedQuizView(q, newStats, () => {
+          renderQuizForm(q, handleSubmit);
+        });
+      }, 700);
+    } catch (err) {
+      quizMsg.textContent = err.message || "Submit failed";
+    }
+  }
+}
+
+/* ---------- quizzes nav ---------- */
+
+function renderNavQuizzes(quizzes = []) {
+  navQuizzes.innerHTML = quizzes.length
+    ? quizzes
+        .map(
+          (q, i) => `
+        <div class="navItem" data-quiz="${i}">
+          Quiz ${i + 1}: ${escapeHtml(q.title)}
+        </div>
+      `
+        )
+        .join("")
+    : `<div class="small">No quizzes</div>`;
+
+  navQuizzes.querySelectorAll("[data-quiz]").forEach((el) => {
+    el.onclick = () => openQuizByIndex(Number(el.dataset.quiz));
+  });
+}
+
+/* ---------- load course ---------- */
+
+async function load() {
+  const courseId = getCourseId();
+  if (!courseId) return show("No course id");
+
+  try {
+    const course = await apiRequest(`/courses/${courseId}`, { auth: true });
+    currentCourse = course;
+
+    titleEl.textContent = course.title;
+    descEl.textContent = course.description;
+
+    isEnrolled = await checkEnrollment(courseId);
+
+    renderActions(courseId);
+    renderNavLessons(course.lessons || []);
+    renderNavQuizzes(course.quizzes || []);
+
+    if (isEnrolled && course.lessons?.length > 0) {
+      openLessonByIndex(0);
+    } else {
+      contentArea.innerHTML = `
+        <div class="small">
+          Select a lesson or quiz from the left menu.
+        </div>
+      `;
+    }
+  } catch (e) {
+    show(e.message || "Failed to load course");
+  }
+}
+
+load();
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\pages\courses.js =====
+import { apiRequest } from "../api.js";
+import { isLoggedIn } from "../auth.js";
+
+const list = document.getElementById("coursesList");
+const msg = document.getElementById("msg");
+
+let enrolledIds = [];
+
+function show(text, ok=false){
+  msg.textContent = text;
+  msg.style.color = ok ? "green" : "crimson";
+}
+
+function escapeHtml(s=""){
+  return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+async function loadEnrollments() {
+  if (!isLoggedIn()) return [];
+  const data = await apiRequest("/enrollments/my", { auth:true });
+  return data.map(e => e.courseId?._id || e.courseId);
+}
+
+async function enroll(courseId) {
+  await apiRequest("/enrollments", {
+    method:"POST",
+    body:{ courseId },
+    auth:true
+  });
+  window.location.href = `course.html?id=${courseId}`;
+}
+
+function render(courses) {
+  list.innerHTML = courses.map(c=>{
+    const id = c._id || c.id;
+    const enrolled = enrolledIds.includes(id);
+
+    return `
+      <section class="courseHero">
+        <div>
+          <h3>${escapeHtml(c.title)}</h3>
+          <p>${escapeHtml(c.description)}</p>
+
+          <button class="btn"
+            data-id="${id}"
+            data-action="${enrolled ? "open" : "enroll"}">
+            ${enrolled ? "Open course" : "Enroll"}
+          </button>
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  document.querySelectorAll("button[data-id]").forEach(btn=>{
+    const id = btn.dataset.id;
+    if (btn.dataset.action === "open") {
+      btn.onclick = () => window.location.href = `course.html?id=${id}`;
+    } else {
+      btn.onclick = () => enroll(id);
+    }
+  });
+}
+
+async function loadCourses() {
+  try {
+    show("Loading...", true);
+    const data = await apiRequest("/courses", { auth: true });
+    const courses = data.courses || data;
+
+    enrolledIds = await loadEnrollments();
+    render(courses);
+    show("");
+  } catch (e) {
+    show(e.message || "Failed to load courses");
+  }
+}
+
+loadCourses();
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\pages\dashboard.js =====
+import { apiRequest } from "../api.js";
+import { getRole, isLoggedIn } from "../auth.js";
+
+const msg = document.getElementById("msg");
+const roleLine = document.getElementById("roleLine");
+const progressList = document.getElementById("studentProgressList");
+
+const studentBox = document.getElementById("studentBox");
+const instructorBox = document.getElementById("instructorBox");
+const courseSelect = document.getElementById("courseSelect");
+const courseStats = document.getElementById("courseStats");
+
+function show(text, ok = false) {
+  msg.textContent = text;
+  msg.style.color = ok ? "green" : "crimson";
+}
+
+function esc(s = "") {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function requireLogin() {
+  if (!isLoggedIn()) {
+    window.location.href = "login.html?next=dashboard.html";
+    return false;
+  }
+  return true;
+}
+
+function showPanel(role) {
+  studentBox.style.display = role === "student" ? "block" : "none";
+  instructorBox.style.display = role === "instructor" ? "block" : "none";
+}
+
+(function init() {
+  if (!requireLogin()) return;
+  const role = getRole();
+  roleLine.textContent = `Logged in role: ${role}`;
+  showPanel(role);
+  if (role === "student") {
+    loadStudentProgress();
+  }
+  if (role === "instructor") {
+    loadInstructorCourses();
+  }
+
+})();
+
+/* ---------- STUDENT ---------- */
+
+document.getElementById("btnProgress")?.addEventListener("click", async () => {
+  const courseId = document.getElementById("studentCourseId").value.trim();
+  const progress = Number(document.getElementById("studentProgress").value);
+
+  try {
+    show("");
+    await apiRequest("/enrollments/progress", {
+      method: "PATCH",
+      body: { courseId, progress },
+      auth: true
+    });
+    show("Progress updated!", true);
+  } catch (e) {
+    show(e.message || "Progress update failed");
+  }
+});
+
+async function loadStudentProgress() {
+  try {
+    const enrollments = await apiRequest("/enrollments/my", { auth: true });
+
+    if (!enrollments.length) {
+      progressList.innerHTML =
+        `<div class="small">You are not enrolled in any courses yet.</div>`;
+      return;
+    }
+
+    progressList.innerHTML = enrollments.map(e => `
+      <div class="card" style="margin-bottom:14px;">
+        <h4 style="margin:0 0 6px;">${esc(e.courseId.title)}</h4>
+        <p class="small" style="margin:0 0 10px;">
+          ${esc(e.courseId.description || "")}
+        </p>
+
+        <div class="progressBar">
+          <div class="progressFill" style="width:${e.progress}%">
+            ${e.progress}%
+          </div>
+        </div>
+
+        <a class="btn" style="margin-top:10px;display:inline-block;"
+           href="course.html?id=${e.courseId._id}">
+          Open course
+        </a>
+      </div>
+    `).join("");
+
+  } catch (e) {
+    show(e.message || "Failed to load progress");
+  }
+}
+
+/* ---------- INSTRUCTOR ---------- */
+
+document
+  .getElementById("createCourseForm")
+  ?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const title = document.getElementById("cTitle").value.trim();
+    const description = document.getElementById("cDesc").value.trim();
+    const price = Number(document.getElementById("cPrice").value);
+
+    try {
+      show("");
+      const data = await apiRequest("/courses", {
+        method: "POST",
+        body: { title, description, price },
+        auth: true
+      });
+      show(`Course created! ID: ${data._id || data.id}`, true);
+      e.target.reset();
+    } catch (err) {
+      show(err.message || "Create course failed");
+    }
+  });
+
+document
+  .getElementById("addLessonForm")
+  ?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const courseId = document.getElementById("lCourseId").value.trim();
+    const title = document.getElementById("lTitle").value.trim();
+    const content = document.getElementById("lContent").value.trim();
+
+    try {
+      show("");
+      await apiRequest(`/courses/${courseId}/lessons`, {
+        method: "POST",
+        body: { title, content },
+        auth: true
+      });
+      show("Lesson added!", true);
+      e.target.reset();
+    } catch (err) {
+      show(err.message || "Add lesson failed");
+    }
+  });
+
+document
+  .getElementById("addQuizForm")
+  ?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const courseId = document.getElementById("qCourseId").value.trim();
+    const title = document.getElementById("qTitle").value.trim();
+    const tasksRaw = document.getElementById("qTasks").value.trim();
+
+    try {
+      show("");
+      const tasks = JSON.parse(tasksRaw);
+      await apiRequest(`/courses/${courseId}/quizzes`, {
+        method: "POST",
+        body: { title, tasks },
+        auth: true
+      });
+      show("Quiz added!", true);
+      e.target.reset();
+    } catch (err) {
+      show(err.message || "Add quiz failed (check JSON tasks)");
+    }
+  });
+
+  async function loadInstructorCourses() {
+  try {
+    const courses = await apiRequest("/courses/my", { auth: true });
+
+    if (!courses.length) {
+      courseStats.innerHTML =
+        `<div class="small">You haven't created any courses yet.</div>`;
+      return;
+    }
+
+    courseSelect.innerHTML =
+      `<option value="">Select course</option>` +
+      courses
+        .map(
+          c => `<option value="${c._id}">${esc(c.title)}</option>`
+        )
+        .join("");
+  } catch (e) {
+    show(e.message || "Failed to load instructor courses");
+  }
+}
+
+courseSelect?.addEventListener("change", async () => {
+  const courseId = courseSelect.value;
+  if (!courseId) {
+    courseStats.innerHTML = "";
+    return;
+  }
+
+  try {
+    courseStats.innerHTML = "Loading...";
+
+    const stats = await apiRequest(
+      `/analytics/course/${courseId}`,
+      { auth: true }
+    );
+
+    renderCourseStats(stats);
+  } catch (e) {
+    courseStats.innerHTML =
+      `<div class="small" style="color:crimson;">
+        ${e.message || "Failed to load analytics"}
+      </div>`;
+  }
+});
+
+function renderCourseStats({ enrolledCount, topStudents }) {
+  courseStats.innerHTML = `
+    <p><b>Enrolled students:</b> ${enrolledCount}</p>
+
+    <h5 style="margin:10px 0 6px;">рџЏ† Top 3 students</h5>
+
+    ${
+      topStudents.length
+        ? topStudents
+            .map(
+              (s, i) => `
+              <div class="listItem">
+                <b>#${i + 1}</b> ${esc(s.name)}
+                <span class="small">вЂ” score: ${s.score}</span>
+              </div>
+            `
+            )
+            .join("")
+        : `<div class="small">No quiz attempts yet.</div>`
+    }
+  `;
+}
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\pages\login.js =====
+import { apiRequest } from "../api.js";
+import { saveAuth } from "../auth.js";
+
+const form = document.getElementById("loginForm");
+const msg = document.getElementById("msg");
+
+function show(text, ok = false) {
+  msg.textContent = text;
+  msg.style.color = ok ? "green" : "crimson";
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  show("");
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  try {
+    const data = await apiRequest("/auth/login", {
+      method: "POST",
+      body: { email, password },
+      auth: false,
+    });
+
+    // рџ”Ґ СЃРѕС…СЂР°РЅСЏРµРј РўРћР›Р¬РљРћ С‚РѕРєРµРЅ
+    saveAuth(data.token);
+
+    show("Login successful! Redirecting...", true);
+
+    // рџ‘‰ СЃСЂР°Р·Сѓ РЅР° dashboard
+    setTimeout(() => {
+      window.location.href = "courses.html";
+    }, 500);
+
+  } catch (err) {
+    show(err.message || "Login failed");
+  }
+});
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\pages\register.js =====
+import { apiRequest } from "../api.js";
+
+const form = document.getElementById("registerForm");
+const msg = document.getElementById("msg");
+
+function show(text, ok = false) {
+  msg.textContent = text;
+  msg.style.color = ok ? "green" : "crimson";
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  show("");
+
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  try {
+    await apiRequest("/auth/register", {
+      method: "POST",
+      body: { name, email, password },
+      auth: false,
+    });
+
+    show("Registration successful! Please login.", true);
+    setTimeout(() => (window.location.href = "login.html"), 700);
+  } catch (err) {
+    show(err.message || "Registration failed");
+  }
+});
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\api.js =====
+import { BASE_URL } from "./config.js";
+import { getToken } from "./auth.js";
+
+export async function apiRequest(path, { method = "GET", body = null, auth = false } = {}) {
+  const headers = { "Content-Type": "application/json" };
+
+  if (auth) {
+    const token = getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : null,
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (res.status === 401) {
+    localStorage.removeItem("learnify_token");
+
+    if (!window.location.pathname.includes("login.html")) {
+      const next = encodeURIComponent(
+        window.location.pathname + window.location.search
+      );
+      window.location.href = `login.html?next=${next}`;
+    }
+
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) {
+    const msg =
+      data?.message ||
+      data?.error ||
+      `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+
+  return data;
+}
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\auth.js =====
+const TOKEN_KEY = "learnify_token";
+
+/* save ONLY token */
+export function saveAuth(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+/* рџ”Ґ ROLE FROM TOKEN */
+export function getRole() {
+  const token = getToken();
+  if (!token) return null;
+
+  const payload = parseJwt(token);
+  return payload?.role || null;
+}
+
+export function isLoggedIn() {
+  return !!getToken();
+}
+
+export function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  window.location.href = "index.html";
+}
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\config.js =====
+export const BASE_URL = "http://localhost:3000/api";
+===== C:\Users\baqyt\Downloads\elearning\frontend\assets\js\ui.js =====
+import { isLoggedIn, getRole, logout } from "./auth.js";
+
+async function loadPartial(selector, file) {
+  const el = document.querySelector(selector);
+  if (!el) return;
+  const res = await fetch(file);
+  el.innerHTML = await res.text();
+}
+
+function updateNav() {
+  const role = getRole();
+  const logged = isLoggedIn();
+
+  const signInLink = document.querySelector('[data-nav="signin"]');
+  const dashboardLink = document.querySelector('[data-nav="dashboard"]');
+  const coursesLink = document.querySelector('[data-nav="courses"]');
+  const logoutBtn = document.querySelector('[data-nav="logout"]');
+  const roleBadge = document.querySelector('[data-nav="role"]');
+
+  if (signInLink) signInLink.style.display = logged ? "none" : "inline-block";
+  if (dashboardLink) dashboardLink.style.display = logged ? "inline-block" : "none";
+  if (coursesLink) coursesLink.style.display = logged ? "inline-block" : "none";
+  if (logoutBtn) logoutBtn.style.display = logged ? "inline-block" : "none";
+
+  if (roleBadge) {
+    roleBadge.textContent = logged ? role : "";
+    roleBadge.style.display = logged ? "inline-block" : "none";
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      logout();
+    });
+  }
+}
+
+export async function initLayout() {
+  await loadPartial("#header", "partials/header.html");
+  await loadPartial("#footer", "partials/footer.html");
+  updateNav();
+}
+===== C:\Users\baqyt\Downloads\elearning\frontend\partials\footer.html =====
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__left">
+      <div>Call center: +7 707 706 12 11</div>
+      <div>242395@astanait.edu.kz</div>
+    </div>
+    <div class="footer__center">
+      Thank you for learning with us! <br />
+      В© 2026 | Learnify.
+    </div>
+    <div class="footer__right">
+      <span class="footer__icon">IG</span>
+      <span class="footer__icon">YT</span>
+    </div>
+  </div>
+</footer>
+===== C:\Users\baqyt\Downloads\elearning\frontend\partials\header.html =====
+<header class="topbar">
+  <div class="container topbar__inner">
+    <a class="brand" href="index.html">
+      <div class="brand__logo">L</div>
+      <span class="brand__name">Learnify</span>
+    </a>
+    <nav class="nav">
+      <a class="nav__link" href="index.html">HOME</a>
+      <a class="nav__link" href="courses.html" data-nav="courses">COURSES</a>
+      <a class="nav__link" href="dashboard.html" data-nav="dashboard" style="display:none;">PROGRESS</a>
+      <a class="nav__link" href="login.html" data-nav="signin">SIGN IN</a>
+      <span class="badge" data-nav="role" style="display:none;"></span>
+      <a class="nav__link nav__link--btn" href="#" data-nav="logout" style="display:none;">LOG OUT</a>
+    </nav>
+  </div>
+</header>
+===== C:\Users\baqyt\Downloads\elearning\frontend\course.html =====
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Course</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+  <main class="main">
+    <div id="msg" class="small" style="margin:10px 0;"></div>
+
+    <div class="courseLayout">
+      <aside class="courseNav card">
+        <h3>Course content</h3>
+
+        <div class="navSection">
+          <b>Lessons</b>
+          <div id="navLessons"></div>
+        </div>
+
+        <div class="navSection">
+          <b>Quizzes</b>
+          <div id="navQuizzes"></div>
+        </div>
+
+      </aside>
+
+      <section class="courseContent card">
+        <h2 id="courseTitle">Loading...</h2>
+        <p id="courseDesc" class="small"></p>
+
+        <div id="actions" style="margin:12px 0;"></div>
+
+        <div id="contentArea" style="margin-top:20px;">
+          <div class="small">Select a lesson or quiz from the left.</div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+  <div id="footer"></div>
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/course.js"></script>
+</body>
+</html>
+===== C:\Users\baqyt\Downloads\elearning\frontend\courses.html =====
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Courses</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+  <main class="main">
+    <div class="container">
+      <h2 style="margin:0 0 10px;">Courses</h2>
+      <p class="small" style="margin:0 0 18px;">Choose a course and start learning.</p>
+      <div id="msg" class="small" style="margin:10px 0;"></div>
+      <div id="coursesList" class="courseList"></div>
+    </div>
+  </main>
+  <div id="footer"></div>
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/courses.js"></script>
+</body>
+</html>
+===== C:\Users\baqyt\Downloads\elearning\frontend\dashboard.html =====
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Progress</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="main">
+    <div class="container">
+      <h2 style="margin:0 0 6px;">Progress</h2>
+      <p class="small" id="roleLine" style="margin:0 0 14px;"></p>
+      <div id="msg" class="small" style="margin:10px 0;"></div>
+
+      <!-- STUDENT -->
+     <section class="card" id="studentBox" style="display:none;">
+      <h3 style="margin:0 0 14px;">My progress</h3>
+
+      <div id="studentProgressList"></div>
+
+    </section>
+
+
+      <!-- INSTRUCTOR -->
+      <section
+        class="card"
+        id="instructorBox"
+        style="display:none; margin-top:16px;"
+      >
+        <h3 style="margin:0 0 10px;">Instructor panel</h3>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card" style="background:#fff;">
+            <h4 style="margin:0 0 10px;">Create course</h4>
+            <form class="form" id="createCourseForm">
+              <input class="input" id="cTitle" placeholder="Title" required />
+              <input
+                class="input"
+                id="cDesc"
+                placeholder="Description"
+                required
+              />
+              <input
+                class="input"
+                id="cPrice"
+                placeholder="Price (number)"
+                type="number"
+                min="0"
+                required
+              />
+              <button class="btn" type="submit">Create</button>
+            </form>
+          </div>
+
+          <div class="card" style="background:#fff;">
+            <h4 style="margin:0 0 10px;">Add lesson to course</h4>
+            <form class="form" id="addLessonForm">
+              <input
+                class="input"
+                id="lCourseId"
+                placeholder="Course ID"
+                required
+              />
+              <input
+                class="input"
+                id="lTitle"
+                placeholder="Lesson title"
+                required
+              />
+              <input
+                class="input"
+                id="lContent"
+                placeholder="Lesson content"
+                required
+              />
+              <button class="btn" type="submit">Add lesson</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card" style="background:#fff; margin-top:16px;">
+          <h4 style="margin:0 0 10px;">Add quiz to course</h4>
+          <form class="form" id="addQuizForm" style="max-width:700px;">
+            <input
+              class="input"
+              id="qCourseId"
+              placeholder="Course ID"
+              required
+            />
+            <input
+              class="input"
+              id="qTitle"
+              placeholder="Quiz title"
+              required
+            />
+            <textarea
+              class="input"
+              id="qTasks"
+              placeholder='Tasks JSON (example: [{"question":"...","options":["A","B"],"correctAnswer":"A"}])'
+              style="min-height:90px;"
+              required
+            ></textarea>
+            <button class="btn" type="submit">Add quiz</button>
+          </form>
+          <div class="small" style="margin-top:8px;">
+            Tasks are stored as an embedded array inside the course.
+          </div>
+        </div>
+
+        <div class="card" style="background:#fff; margin-top:16px;">
+          <h4 style="margin:0 0 10px;">Course analytics</h4>
+
+          <select id="courseSelect" class="input">
+            <option value="">Select course</option>
+          </select>
+
+          <div id="courseStats" style="margin-top:14px;"></div>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/dashboard.js"></script>
+</body>
+</html>
+===== C:\Users\baqyt\Downloads\elearning\frontend\index.html =====
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+  <main class="main">
+  <div class="container">
+    <section class="hero">
+      <div class="hero__left">
+        <span class="hero__badge">BEST E-LEARNING PLATFORM</span>
+
+        <h1 class="hero__title">
+          LEARNIFY
+        </h1>
+
+        <p class="hero__subtitle">
+          Start learning today!
+        </p>
+
+      </div>
+
+      <div class="hero__right">
+        <img
+  src="assets/img/index.png"
+  alt="Learnify illustration"
+  class="hero__img"
+/>
+      </div>
+    </section>
+  </div>
+</main>
+
+  <div id="footer"></div>
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+</body>
+</html>
+===== C:\Users\baqyt\Downloads\elearning\frontend\login.html =====
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Login</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+  <main class="main">
+    <div class="container">
+      <div class="card" style="max-width:520px;margin:0 auto;">
+        <h2 style="margin:0 0 10px;">Sign in</h2>
+        <p class="small" style="margin:0 0 16px;">Use your email and password to access courses.</p>
+        <form class="form" id="loginForm">
+          <input class="input" type="email" id="email" placeholder="Email" required />
+          <input class="input" type="password" id="password" placeholder="Password" required />
+          <button class="btn" type="submit">Login</button>
+          <p class="small" style="margin:6px 0 0;">
+            No account? <a href="register.html">Create one</a>
+          </p>
+          <div id="msg" class="small" style="margin-top:10px;"></div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <div id="footer"></div>
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/login.js"></script>
+</body>
+</html>
+===== C:\Users\baqyt\Downloads\elearning\frontend\register.html =====
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Register</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+  <main class="main">
+    <div class="container">
+      <div class="card" style="max-width:520px;margin:0 auto;">
+        <h2 style="margin:0 0 10px;">Create account</h2>
+        <p class="small" style="margin:0 0 16px;">Register as a student and start learning.</p>
+        <form class="form" id="registerForm">
+          <input class="input" type="text" id="name" placeholder="Full name" required />
+          <input class="input" type="email" id="email" placeholder="Email" required />
+          <input class="input" type="password" id="password" placeholder="Password" required />
+          <button class="btn" type="submit">Register</button>
+          <p class="small" style="margin:6px 0 0;">
+            Already have an account? <a href="login.html">Sign in</a>
+          </p>
+          <div id="msg" class="small" style="margin-top:10px;"></div>
+        </form>
+      </div>
+    </div>
+  </main>
+  <div id="footer"></div>
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/register.js"></script>
+</body>
+</html>

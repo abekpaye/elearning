@@ -199,7 +199,9 @@ function renderQuizForm(q, onSubmit) {
         })
         .join("")}
 
-      <button class="btn" type="submit" style="margin-top:10px;">Submit</button>
+      <button class="btn" type="submit" id="quizSubmitBtn" style="margin-top:10px;">
+  Submit
+</button>
       <div class="small" id="quizMsg" style="margin-top:10px;"></div>
     </form>
   `;
@@ -252,45 +254,72 @@ async function openQuizByIndex(index = 0) {
   renderQuizForm(q, handleSubmit);
 
   async function handleSubmit(e) {
-    e.preventDefault();
+  e.preventDefault();
 
-    const quizMsg = document.getElementById("quizMsg");
-    quizMsg.textContent = "";
-    quizMsg.style.color = "crimson";
+  const quizMsg = document.getElementById("quizMsg");
+  const submitBtn = document.getElementById("quizSubmitBtn");
 
-    const answers = (q.tasks || []).map((t) => {
-      const checked = contentArea.querySelector(`input[name="q_${t._id}"]:checked`);
-      return { taskId: t._id, selectedOptionId: checked ? checked.value : null };
+  quizMsg.textContent = "";
+  quizMsg.style.color = "crimson";
+
+  const answers = (q.tasks || []).map((t) => {
+    const checked = contentArea.querySelector(`input[name="q_${t._id}"]:checked`);
+    return { taskId: t._id, selectedOptionId: checked ? checked.value : null };
+  });
+
+  if (answers.some((a) => !a.selectedOptionId)) {
+    quizMsg.textContent = "Please answer all questions.";
+    return;
+  }
+
+  try {
+    const resp = await apiRequest("/quizzes/attempts", {
+      method: "POST",
+      body: { quizId: q._id, answers },
+      auth: true
     });
 
-    if (answers.some((a) => !a.selectedOptionId)) {
-      quizMsg.textContent = "Please answer all questions.";
-      return;
-    }
+    // ✅ показать правильные / неправильные
+    markQuizResults(resp.results || []);
 
-    try {
-      const resp = await apiRequest("/quizzes/attempts", {
-        method: "POST",
-        body: { quizId: q._id, answers },
-        auth: true
-      });
+    quizMsg.textContent = `Score: ${resp.score}. Progress: ${resp.progress}.`;
+    quizMsg.style.color = "green";
 
-      // show correct/wrong
-      markQuizResults(resp.results || []);
-      quizMsg.textContent = `Submitted! Score: ${resp.score}. Progress: ${resp.progress}.`;
-      quizMsg.style.color = "green";
+    // 🔒 блокируем варианты
+    contentArea
+      .querySelectorAll('input[type="radio"]')
+      .forEach((i) => (i.disabled = true));
 
-      // then lock (and refresh will also be locked)
-      const newStats = await loadQuizStats(q._id);
-      setTimeout(() => {
-        renderLockedQuizView(q, newStats, () => {
-          renderQuizForm(q, handleSubmit);
+    // 🔁 меняем Submit → Retake
+    submitBtn.textContent = "Retake";
+    submitBtn.type = "button";
+
+    submitBtn.onclick = () => {
+      // очистка ответов
+      contentArea
+        .querySelectorAll('input[type="radio"]')
+        .forEach((i) => {
+          i.checked = false;
+          i.disabled = false;
         });
-      }, 700);
-    } catch (err) {
-      quizMsg.textContent = err.message || "Submit failed";
-    }
+
+      // очистка feedback
+      contentArea
+        .querySelectorAll("[data-feedback]")
+        .forEach((f) => (f.textContent = ""));
+
+      quizMsg.textContent = "";
+
+      // возвращаем Submit
+      submitBtn.textContent = "Submit";
+      submitBtn.type = "submit";
+      submitBtn.onclick = null;
+    };
+
+  } catch (err) {
+    quizMsg.textContent = err.message || "Submit failed";
   }
+}
 }
 
 /* ---------- quizzes nav ---------- */
@@ -332,15 +361,22 @@ async function load() {
     renderNavLessons(course.lessons || []);
     renderNavQuizzes(course.quizzes || []);
 
-    if (isEnrolled && course.lessons?.length > 0) {
-      openLessonByIndex(0);
-    } else {
-      contentArea.innerHTML = `
-        <div class="small">
-          Select a lesson or quiz from the left menu.
-        </div>
-      `;
-    }
+    const role = getRole();
+
+const canAutoOpenLesson =
+  (role === "student" && isEnrolled) ||
+  role === "instructor";
+
+if (canAutoOpenLesson && course.lessons?.length > 0) {
+  openLessonByIndex(0);
+} else {
+  contentArea.innerHTML = `
+    <div class="small">
+      Select a lesson or quiz from the left menu.
+    </div>
+  `;
+}
+
   } catch (e) {
     show(e.message || "Failed to load course");
   }

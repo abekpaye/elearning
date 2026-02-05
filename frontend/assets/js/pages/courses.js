@@ -1,5 +1,6 @@
 import { apiRequest } from "../api.js";
 import { isLoggedIn } from "../auth.js";
+import { getRole } from "../auth.js";
 
 const list = document.getElementById("coursesList");
 const msg = document.getElementById("msg");
@@ -31,9 +32,15 @@ async function enroll(courseId) {
 }
 
 function render(courses) {
-  list.innerHTML = courses.map(c=>{
+  const role = getRole();
+  const isInstructor = role === "instructor";
+
+  list.innerHTML = courses.map(c => {
     const id = c._id || c.id;
     const enrolled = enrolledIds.includes(id);
+
+    const action = isInstructor || enrolled ? "open" : "enroll";
+    const label = isInstructor || enrolled ? "Open course" : "Enroll";
 
     return `
       <section class="courseHero">
@@ -43,18 +50,20 @@ function render(courses) {
 
           <button class="btn"
             data-id="${id}"
-            data-action="${enrolled ? "open" : "enroll"}">
-            ${enrolled ? "Open course" : "Enroll"}
+            data-action="${action}">
+            ${label}
           </button>
         </div>
       </section>
     `;
   }).join("");
 
-  document.querySelectorAll("button[data-id]").forEach(btn=>{
+  document.querySelectorAll("button[data-id]").forEach(btn => {
     const id = btn.dataset.id;
+
     if (btn.dataset.action === "open") {
-      btn.onclick = () => window.location.href = `course.html?id=${id}`;
+      btn.onclick = () =>
+        window.location.href = `course.html?id=${id}`;
     } else {
       btn.onclick = () => enroll(id);
     }
