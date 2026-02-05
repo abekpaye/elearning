@@ -2,6 +2,7 @@ import { apiRequest } from "../api.js";
 import { isLoggedIn } from "../auth.js";
 import { getRole } from "../auth.js";
 
+const instructorActions = document.getElementById("instructorActions");
 const list = document.getElementById("coursesList");
 const msg = document.getElementById("msg");
 
@@ -75,6 +76,10 @@ async function loadCourses() {
     show("Loading...", true);
     const data = await apiRequest("/courses", { auth: true });
     const courses = data.courses || data;
+    const role = getRole();
+if (instructorActions) {
+  instructorActions.style.display = role === "instructor" ? "block" : "none";
+}
 
     enrolledIds = await loadEnrollments();
     render(courses);

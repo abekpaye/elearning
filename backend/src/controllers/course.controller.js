@@ -94,13 +94,63 @@ exports.addQuiz = async (req, res) => {
     const { id } = req.params;
     const { title, tasks } = req.body;
 
+    if (!title) {
+      return res.status(400).json({ message: "Quiz title is required" });
+    }
+
+    // tasks can be optional
+    const safeTasks = Array.isArray(tasks) ? tasks : [];
+
+    // Normalize tasks to required schema:
+    // task: { question, options:[{_id,text}], correctOptionId }
+    const normalizedTasks = safeTasks.map((t) => {
+      const question = (t?.question || "").trim();
+      if (!question) {
+        throw new Error("Each task must have a question");
+      }
+
+      // options can be ["A","B"] or [{text:"A"}] etc.
+      const rawOptions = Array.isArray(t?.options) ? t.options : [];
+      if (rawOptions.length < 2) {
+        throw new Error("Each task must have at least 2 options");
+      }
+
+      // Build option docs with ObjectIds
+      const optionDocs = rawOptions.map((o) => {
+        const text = typeof o === "string" ? o : (o?.text || "");
+        const clean = String(text).trim();
+        if (!clean) throw new Error("Option text cannot be empty");
+        return {
+          _id: o?._id ? o._id : new Course.db.base.Types.ObjectId(),
+          text: clean
+        };
+      });
+
+      // correctOptionId may be provided OR correctIndex
+      let correctOptionId = t?.correctOptionId || null;
+
+      if (!correctOptionId && Number.isInteger(t?.correctIndex)) {
+        const idx = t.correctIndex;
+        if (idx < 0 || idx >= optionDocs.length) {
+          throw new Error("correctIndex is out of range");
+        }
+        correctOptionId = optionDocs[idx]._id;
+      }
+
+      if (!correctOptionId) {
+        throw new Error("Each task must have correctOptionId or correctIndex");
+      }
+
+      return {
+        question,
+        options: optionDocs,
+        correctOptionId
+      };
+    });
+
     const course = await Course.findOneAndUpdate(
       { _id: id, instructorId: req.user.id },
-      {
-        $push: {
-          quizzes: { title, tasks }
-        }
-      },
+      { $push: { quizzes: { title, tasks: normalizedTasks } } },
       { new: true }
     );
 
@@ -115,7 +165,6 @@ exports.addQuiz = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 exports.updateCourse = async (req, res) => {
   try {

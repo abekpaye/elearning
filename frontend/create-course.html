@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learnify | Create Course</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div id="header"></div>
+
+  <main class="main">
+    <div class="container">
+      <div class="card" style="max-width:1000px;margin:0 auto;">
+        <h2 style="margin:0 0 8px;">Create new course</h2>
+        <p class="small" style="margin:0 0 16px;">
+          Fill course info, add lessons and quizzes, then publish.
+        </p>
+
+        <div id="msg" class="small" style="margin:10px 0;"></div>
+
+        <!-- COURSE INFO -->
+        <section class="card" style="background:#fff;">
+          <h3 style="margin:0 0 10px;">Course info</h3>
+          <div class="form" style="max-width:700px;">
+            <input class="input" id="cTitle" placeholder="Course title" required />
+            <input class="input" id="cDesc" placeholder="Course description" required />
+          </div>
+        </section>
+
+        <!-- LESSONS -->
+        <section class="card" style="background:#fff; margin-top:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <h3 style="margin:0;">Lessons</h3>
+            <button class="btn" id="btnAddLesson" type="button">+ Add lesson</button>
+          </div>
+
+          <div id="lessonsWrap" style="margin-top:12px;"></div>
+        </section>
+
+        <!-- QUIZZES -->
+        <section class="card" style="background:#fff; margin-top:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <h3 style="margin:0;">Quizzes</h3>
+            <button class="btn" id="btnAddQuiz" type="button">+ Add quiz</button>
+          </div>
+
+          <div id="quizzesWrap" style="margin-top:12px;"></div>
+        </section>
+
+        <!-- PUBLISH -->
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+          <a class="btn" href="courses.html" style="background:#fff;border:1px solid #ddd;color:#111;">
+            Cancel
+          </a>
+          <button class="btn" id="btnPublish" type="button">Publish</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script type="module">
+    import { initLayout } from "./assets/js/ui.js";
+    initLayout();
+  </script>
+  <script type="module" src="assets/js/pages/create-course.js"></script>
+</body>
+</html>
