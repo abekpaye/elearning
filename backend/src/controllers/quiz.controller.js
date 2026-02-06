@@ -64,9 +64,15 @@ exports.createAttempt = async (req, res) => {
       };
     });
 
-    // 6) Score: 20 points per correct answer
+    // 6) Score: normalized to 0–100 based on number of questions
+    const totalQuestions = quiz.tasks.length;
+
     const correctCount = results.filter((r) => r.isCorrect).length;
-    const score = correctCount * 20;
+
+    const score =
+      totalQuestions > 0
+        ? Math.round((correctCount / totalQuestions) * 100)
+        : 0;
 
     // 7) Save attempt to quizAttempts
     await QuizAttempt.create({
@@ -75,28 +81,44 @@ exports.createAttempt = async (req, res) => {
       score
     });
 
-    // 8) Update progress: average score across all quizzes in this course
-    const quizIds = course.quizzes.map((q) => q._id);
+    // 8) Update progress: best score per quiz / total quizzes in course
 
-    const agg = await QuizAttempt.aggregate([
-      {
-        $match: {
-          studentId: new mongoose.Types.ObjectId(studentId),
-          quizId: { $in: quizIds }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgScore: { $avg: "$score" }
-        }
+    const quizIds = course.quizzes.map(q => q._id);
+
+    // берем ВСЕ попытки студента по квизам этого курса
+    const attempts = await QuizAttempt.find({
+      studentId,
+      quizId: { $in: quizIds }
+    });
+
+    // quizId -> bestScore
+    const bestScoresMap = {};
+
+    for (const attempt of attempts) {
+      const qid = attempt.quizId.toString();
+
+      if (
+        bestScoresMap[qid] === undefined ||
+        attempt.score > bestScoresMap[qid]
+      ) {
+        bestScoresMap[qid] = attempt.score;
       }
-    ]);
+    }
 
-    const progress = agg.length ? Math.round(agg[0].avgScore) : 0;
+    const totalQuizzes = quizIds.length;
+
+    // сумма лучших результатов (несданные квизы = 0)
+    const totalBestScore = Object.values(bestScoresMap)
+      .reduce((sum, s) => sum + s, 0);
+
+    const progress =
+      totalQuizzes > 0
+        ? Math.round(totalBestScore / totalQuizzes)
+        : 0;
 
     enrollment.progress = progress;
     await enrollment.save();
+
 
     // 9) Return data so frontend can show correct/wrong after submit
     return res.status(201).json({

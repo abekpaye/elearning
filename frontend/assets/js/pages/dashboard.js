@@ -105,76 +105,6 @@ async function loadStudentProgress() {
 
 /* ---------- INSTRUCTOR ---------- */
 
-document
-  .getElementById("createCourseForm")
-  ?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const title = document.getElementById("cTitle").value.trim();
-    const description = document.getElementById("cDesc").value.trim();
-    const price = Number(document.getElementById("cPrice").value);
-
-    try {
-      show("");
-      const data = await apiRequest("/courses", {
-        method: "POST",
-        body: { title, description, price },
-        auth: true
-      });
-      show(`Course created! ID: ${data._id || data.id}`, true);
-      e.target.reset();
-    } catch (err) {
-      show(err.message || "Create course failed");
-    }
-  });
-
-document
-  .getElementById("addLessonForm")
-  ?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const courseId = document.getElementById("lCourseId").value.trim();
-    const title = document.getElementById("lTitle").value.trim();
-    const content = document.getElementById("lContent").value.trim();
-
-    try {
-      show("");
-      await apiRequest(`/courses/${courseId}/lessons`, {
-        method: "POST",
-        body: { title, content },
-        auth: true
-      });
-      show("Lesson added!", true);
-      e.target.reset();
-    } catch (err) {
-      show(err.message || "Add lesson failed");
-    }
-  });
-
-document
-  .getElementById("addQuizForm")
-  ?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const courseId = document.getElementById("qCourseId").value.trim();
-    const title = document.getElementById("qTitle").value.trim();
-    const tasksRaw = document.getElementById("qTasks").value.trim();
-
-    try {
-      show("");
-      const tasks = JSON.parse(tasksRaw);
-      await apiRequest(`/courses/${courseId}/quizzes`, {
-        method: "POST",
-        body: { title, tasks },
-        auth: true
-      });
-      show("Quiz added!", true);
-      e.target.reset();
-    } catch (err) {
-      show(err.message || "Add quiz failed (check JSON tasks)");
-    }
-  });
-
   async function loadInstructorCourses() {
   try {
     const courses = await apiRequest("/courses/my", { auth: true });
@@ -207,39 +137,72 @@ courseSelect?.addEventListener("change", async () => {
   try {
     courseStats.innerHTML = "Loading...";
 
-    const stats = await apiRequest(
-      `/analytics/course/${courseId}`,
+    const engagement = await apiRequest(
+      `/analytics/course-engagement?courseId=${courseId}`,
       { auth: true }
     );
 
-    renderCourseStats(stats);
+    const topStudents = await apiRequest(
+      `/analytics/courses/${courseId}/top-students`,
+      { auth: true }
+    );
+
+    renderCourseStats(engagement[0], topStudents);
   } catch (e) {
-    courseStats.innerHTML =
-      `<div class="small" style="color:crimson;">
+    courseStats.innerHTML = `
+      <div class="small" style="color:crimson;">
         ${e.message || "Failed to load analytics"}
-      </div>`;
+      </div>
+    `;
   }
 });
 
-function renderCourseStats({ enrolledCount, topStudents }) {
+function renderCourseStats(stats, topStudents = []) {
+  if (!stats) {
+    courseStats.innerHTML =
+      `<div class="small">No analytics data yet.</div>`;
+    return;
+  }
+
+  const {
+    studentsCount = 0,
+    avgProgress = 0,
+    activeStudents = 0
+  } = stats;
+
   courseStats.innerHTML = `
-    <p><b>Enrolled students:</b> ${enrolledCount}</p>
+    <div class="statBox">
+      <div class="statRow">
+        <span>Students enrolled</span>
+        <b>${studentsCount}</b>
+      </div>
 
-    <h5 style="margin:10px 0 6px;">🏆 Top 3 students</h5>
+      <div class="statRow">
+        <span>Average progress</span>
+        <b>${avgProgress}%</b>
+      </div>
 
-    ${
-      topStudents.length
-        ? topStudents
-            .map(
-              (s, i) => `
-              <div class="listItem">
-                <b>#${i + 1}</b> ${esc(s.name)}
-                <span class="small">— score: ${s.score}</span>
-              </div>
-            `
-            )
-            .join("")
-        : `<div class="small">No quiz attempts yet.</div>`
-    }
+      <div class="statRow">
+        <span>Active students</span>
+        <b>${activeStudents}</b>
+      </div>
+
+      <h5 style="margin:12px 0 6px;">🏆 Top 3 students</h5>
+
+      ${
+        Array.isArray(topStudents) && topStudents.length
+          ? topStudents
+              .map(
+                (s, i) => `
+                <div class="statRow">
+                  <span>#${i + 1} ${esc(s.name)}</span>
+                  <b>${s.avgScore}</b>
+                </div>
+              `
+              )
+              .join("")
+          : `<div class="small">No quiz attempts yet.</div>`
+      }
+    </div>
   `;
 }

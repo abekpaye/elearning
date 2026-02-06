@@ -451,3 +451,25 @@ body{
   align-items: center;
   justify-content: center;
 }
+
+.selectWide {
+  width: 100%;
+  max-width: 420px;
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 12px;
+}
+
+.statBox {
+  background: #f6f7fb;
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
