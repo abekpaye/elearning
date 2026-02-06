@@ -32,85 +32,7 @@
       >
         <h3 style="margin:0 0 10px;">Instructor panel</h3>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div class="card" style="background:#fff;">
-            <h4 style="margin:0 0 10px;">Create course</h4>
-            <form class="form" id="createCourseForm">
-              <input class="input" id="cTitle" placeholder="Title" required />
-              <input
-                class="input"
-                id="cDesc"
-                placeholder="Description"
-                required
-              />
-              <input
-                class="input"
-                id="cPrice"
-                placeholder="Price (number)"
-                type="number"
-                min="0"
-                required
-              />
-              <button class="btn" type="submit">Create</button>
-            </form>
-          </div>
-
-          <div class="card" style="background:#fff;">
-            <h4 style="margin:0 0 10px;">Add lesson to course</h4>
-            <form class="form" id="addLessonForm">
-              <input
-                class="input"
-                id="lCourseId"
-                placeholder="Course ID"
-                required
-              />
-              <input
-                class="input"
-                id="lTitle"
-                placeholder="Lesson title"
-                required
-              />
-              <input
-                class="input"
-                id="lContent"
-                placeholder="Lesson content"
-                required
-              />
-              <button class="btn" type="submit">Add lesson</button>
-            </form>
-          </div>
-        </div>
-
-        <div class="card" style="background:#fff; margin-top:16px;">
-          <h4 style="margin:0 0 10px;">Add quiz to course</h4>
-          <form class="form" id="addQuizForm" style="max-width:700px;">
-            <input
-              class="input"
-              id="qCourseId"
-              placeholder="Course ID"
-              required
-            />
-            <input
-              class="input"
-              id="qTitle"
-              placeholder="Quiz title"
-              required
-            />
-            <textarea
-              class="input"
-              id="qTasks"
-              placeholder='Tasks JSON (example: [{"question":"...","options":["A","B"],"correctAnswer":"A"}])'
-              style="min-height:90px;"
-              required
-            ></textarea>
-            <button class="btn" type="submit">Add quiz</button>
-          </form>
-          <div class="small" style="margin-top:8px;">
-            Tasks are stored as an embedded array inside the course.
-          </div>
-        </div>
-
-        <div class="card" style="background:#fff; margin-top:16px;">
+        <div class="card" style="background:#fff;">
           <h4 style="margin:0 0 10px;">Course analytics</h4>
 
           <select id="courseSelect" class="input">
@@ -119,7 +41,6 @@
 
           <div id="courseStats" style="margin-top:14px;"></div>
         </div>
-
       </section>
     </div>
   </main>

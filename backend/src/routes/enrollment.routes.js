@@ -34,7 +34,9 @@ router.get("/my", authMiddleware, async (req, res) => {
     const enrollments = await Enrollment.find({ studentId })
       .populate("courseId");
 
-    res.json(enrollments);
+    const safeEnrollments = enrollments.filter(e => e.courseId);
+
+    res.json(safeEnrollments);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
