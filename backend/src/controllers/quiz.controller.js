@@ -107,8 +107,6 @@ exports.createAttempt = async (req, res) => {
     enrollment.progress = progress;
     await enrollment.save();
 
-
-    // 9) Return data so frontend can show correct/wrong after submit
     return res.status(201).json({
       message: "Attempt saved, progress updated",
       score,
