@@ -1,6 +1,6 @@
 // frontend/assets/js/pages/course.js
 import { apiRequest } from "../api.js";
-import { getRole, isLoggedIn } from "../auth.js";
+import { getRole, isLoggedIn, getUserId } from "../auth.js";
 
 const msg = document.getElementById("msg");
 
@@ -48,6 +48,15 @@ async function checkEnrollment(courseId) {
   return data.some((e) => e.courseId?._id === courseId || e.courseId === courseId);
 }
 
+function isOwnerInstructor(course) {
+  const role = getRole();
+  const uid = getUserId();
+  if (role !== "instructor" || !uid) return false;
+
+  const instId = course?.instructorId?._id || course?.instructorId;
+  return String(instId) === String(uid);
+}
+
 /* ---------- enroll UI ---------- */
 
 async function enroll(courseId) {
@@ -85,6 +94,17 @@ function renderActions(courseId) {
     btn.textContent = "Enroll";
     btn.onclick = () => enroll(courseId);
     actionsEl.appendChild(btn);
+  }
+    if (getRole() === "instructor" && isOwnerInstructor(currentCourse)) {
+    actionsEl.innerHTML = `
+      <button class="btn" id="btnEditCourse">Edit</button>
+      <button class="btn" id="btnDeleteCourse" style="background:#fff;border:1px solid #ddd;color:#111;">
+        Delete course
+      </button>
+    `;
+
+    document.getElementById("btnEditCourse").onclick = () => openEditView();
+    document.getElementById("btnDeleteCourse").onclick = () => deleteCourse(courseId);
   }
 }
 
@@ -320,6 +340,178 @@ async function openQuizByIndex(index = 0) {
     quizMsg.textContent = err.message || "Submit failed";
   }
 }
+}
+
+function editLessonRowHTML(l, idx) {
+  return `
+    <div class="card" data-lrow="${idx}" style="background:#fff; margin-top:10px; border:1px solid #eee;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <b>Lesson #${idx + 1}</b>
+        <button class="btn btnSmall" type="button" data-remove="${idx}">Remove</button>
+      </div>
+
+      <input class="input" data-l-id value="${l._id || ""}" style="display:none;" />
+
+      <div class="form" style="margin-top:10px;">
+        <input class="input" data-l-title placeholder="Title" value="${escapeHtml(l.title || "")}" />
+        <input class="input" data-l-video placeholder="Video URL" value="${escapeHtml(l.videoUrl || "")}" />
+        <input class="input" data-l-order placeholder="Order number" value="${l.orderNumber ?? ""}" />
+        <textarea class="input" data-l-content placeholder="Content" style="min-height:80px;">${escapeHtml(l.content || "")}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+function openEditView() {
+  const c = currentCourse;
+
+  const lessons = Array.isArray(c.lessons) ? c.lessons : [];
+  const rows = lessons.map((l, i) => editLessonRowHTML(l, i)).join("");
+
+  contentArea.innerHTML = `
+    <h3>Edit course</h3>
+
+    <div class="card" style="background:#fff; margin-top:12px;">
+      <div class="form" style="max-width:800px;">
+        <input class="input" id="editTitle" placeholder="Course title" value="${escapeHtml(c.title || "")}" />
+        <textarea class="input" id="editDesc" placeholder="Course description" style="min-height:70px;">${escapeHtml(c.description || "")}</textarea>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <h4 style="margin:0;">Lessons</h4>
+        <button class="btn btnSmall" type="button" id="btnAddLessonEdit">+ Add lesson</button>
+      </div>
+      <div id="lessonsEditWrap">${rows || `<div class="small" style="margin-top:10px;">No lessons yet.</div>`}</div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+      <button class="btn" type="button" id="btnSaveChanges">Save changes</button>
+      <button class="btn" type="button" id="btnCancelEdit" style="background:#fff;border:1px solid #ddd;color:#111;">
+        Cancel
+      </button>
+    </div>
+
+    <div class="small" id="editMsg" style="margin-top:10px;"></div>
+  `;
+
+  const wrap = document.getElementById("lessonsEditWrap");
+
+  function wireRemoveButtons() {
+    wrap.querySelectorAll("[data-remove]").forEach((b) => {
+      b.onclick = () => {
+        const idx = b.dataset.remove;
+        const row = wrap.querySelector(`[data-lrow="${idx}"]`);
+        if (row) row.remove();
+      };
+    });
+  }
+
+  wireRemoveButtons();
+
+  document.getElementById("btnAddLessonEdit").onclick = () => {
+    const idx = wrap.querySelectorAll("[data-lrow]").length;
+    wrap.insertAdjacentHTML("beforeend", editLessonRowHTML({
+      _id: "",
+      title: "",
+      content: "",
+      videoUrl: "",
+      orderNumber: idx + 1
+    }, idx));
+    wireRemoveButtons();
+  };
+
+  document.getElementById("btnCancelEdit").onclick = () => {
+    openLessonByIndex(0);
+  };
+
+  document.getElementById("btnSaveChanges").onclick = () => saveChanges();
+}
+
+async function saveChanges() {
+  const editMsg = document.getElementById("editMsg");
+  const courseId = getCourseId();
+
+  editMsg.textContent = "";
+  editMsg.style.color = "crimson";
+
+  const title = document.getElementById("editTitle").value.trim();
+  const description = document.getElementById("editDesc").value.trim();
+
+  if (!title || !description) {
+    editMsg.textContent = "Title and description are required.";
+    return;
+  }
+
+  try {
+    // 1) update course fields
+    await apiRequest(`/courses/${courseId}`, {
+      method: "PATCH",
+      body: { title, description },
+      auth: true
+    });
+
+    // 2) lessons: update existing, create new
+    const wrap = document.getElementById("lessonsEditWrap");
+    const rows = Array.from(wrap.querySelectorAll("[data-lrow]"));
+
+    for (const r of rows) {
+      const lessonId = r.querySelector("[data-l-id]").value.trim();
+      const lTitle = r.querySelector("[data-l-title]").value.trim();
+      const lVideo = r.querySelector("[data-l-video]").value.trim();
+      const lOrder = Number(r.querySelector("[data-l-order]").value);
+      const lContent = r.querySelector("[data-l-content]").value.trim();
+
+      if (!lTitle) continue;
+
+      const payload = {
+        title: lTitle,
+        content: lContent,
+        videoUrl: lVideo,
+        orderNumber: Number.isFinite(lOrder) ? lOrder : undefined
+      };
+
+      if (lessonId) {
+        await apiRequest(`/courses/${courseId}/lessons/${lessonId}`, {
+          method: "PATCH",
+          body: payload,
+          auth: true
+        });
+      } else {
+        await apiRequest(`/courses/${courseId}/lessons`, {
+          method: "POST",
+          body: payload,
+          auth: true
+        });
+      }
+    }
+
+    editMsg.textContent = "Saved!";
+    editMsg.style.color = "green";
+
+    // reload course
+    await load();
+    openLessonByIndex(0);
+
+  } catch (e) {
+    editMsg.textContent = e.message || "Save failed";
+  }
+}
+
+async function deleteCourse(courseId) {
+  if (!confirm("Delete this course? This will remove enrollments and quiz attempts too.")) return;
+
+  try {
+    await apiRequest(`/courses/${courseId}`, {
+      method: "DELETE",
+      auth: true
+    });
+
+    window.location.href = "courses.html";
+  } catch (e) {
+    show(e.message || "Delete failed");
+  }
 }
 
 /* ---------- quizzes nav ---------- */

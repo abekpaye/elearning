@@ -42,11 +42,8 @@ exports.getCourseById = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    if (role === "instructor") {
-      if (course.instructorId.toString() !== userId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-    }
+    // ✅ instructors can VIEW any course
+    // ❗ editing is still protected in edit endpoints by instructorId checks
 
     if (role === "student") {
       const enrolled = await Enrollment.exists({

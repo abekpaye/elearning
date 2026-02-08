@@ -28,6 +28,14 @@ export function getRole() {
   return payload?.role || null;
 }
 
+export function getUserId() {
+  const token = getToken();
+  if (!token) return null;
+
+  const payload = parseJwt(token);
+  return payload?.id || null;
+}
+
 export function isLoggedIn() {
   return !!getToken();
 }
