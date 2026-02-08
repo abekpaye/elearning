@@ -36,9 +36,7 @@ function lessonBlockHTML(idx) {
     <div class="card lessonBox" data-lesson="${idx}" style="background:#fff; margin-top:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
         <h4 style="margin:0;">Lesson #${idx + 1}</h4>
-        <button class="btn btnSmall btnRemoveLesson" type="button" data-remove-lesson="${idx}">
-          Remove
-        </button>
+        <button class="btn btnSmall" type="button" data-remove-lesson="${idx}">Remove</button>
       </div>
 
       <div class="form" style="margin-top:10px;">
@@ -55,8 +53,7 @@ function addLessonBlock() {
   lessonsWrap.insertAdjacentHTML("beforeend", lessonBlockHTML(idx));
 
   lessonsWrap.querySelector(`[data-remove-lesson="${idx}"]`).onclick = () => {
-    const box = lessonsWrap.querySelector(`.lessonBox[data-lesson="${idx}"]`);
-    if (box) box.remove();
+    lessonsWrap.querySelector(`.lessonBox[data-lesson="${idx}"]`)?.remove();
   };
 }
 
@@ -67,9 +64,7 @@ function quizBlockHTML(qIdx) {
     <div class="card quizBox" data-quiz="${qIdx}" style="background:#fff; margin-top:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
         <h4 style="margin:0;">Quiz #${qIdx + 1}</h4>
-        <button class="btn btnSmall btnRemoveQuiz" type="button" data-remove-quiz="${qIdx}">
-          Remove
-        </button>
+        <button class="btn btnSmall" type="button" data-remove-quiz="${qIdx}">Remove</button>
       </div>
 
       <div class="form" style="margin-top:10px; max-width:800px;">
@@ -87,8 +82,8 @@ function quizBlockHTML(qIdx) {
 
 function questionHTML(qIdx, tIdx) {
   return `
-    <div class="card questionBox" data-question="${tIdx}" style="background:#fff; margin-top:10px;border:1px solid #eee;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+    <div class="card questionBox" data-question="${tIdx}" style="background:#fff;margin-top:10px;border:1px solid #eee;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
         <b>Question #${tIdx + 1}</b>
         <button class="btn btnSmall" type="button" data-remove-question="${qIdx}:${tIdx}">Remove</button>
       </div>
@@ -98,7 +93,7 @@ function questionHTML(qIdx, tIdx) {
 
         <div class="small" style="margin:8px 0 4px;">Options (choose correct):</div>
 
-        ${[0, 1, 2, 3].map(i => `
+        ${[0,1,2,3].map(i => `
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
             <input type="radio" name="correct_${qIdx}_${tIdx}" value="${i}" />
             <input class="input" data-opt="${i}" placeholder="Option ${i + 1}" required />
@@ -114,12 +109,11 @@ function addQuizBlock() {
   quizzesWrap.insertAdjacentHTML("beforeend", quizBlockHTML(qIdx));
 
   quizzesWrap.querySelector(`[data-remove-quiz="${qIdx}"]`).onclick = () => {
-    const box = quizzesWrap.querySelector(`.quizBox[data-quiz="${qIdx}"]`);
-    if (box) box.remove();
+    quizzesWrap.querySelector(`.quizBox[data-quiz="${qIdx}"]`)?.remove();
   };
 
-  const addBtn = quizzesWrap.querySelector(`[data-add-question="${qIdx}"]`);
-  addBtn.onclick = () => addQuestion(qIdx);
+  quizzesWrap.querySelector(`[data-add-question="${qIdx}"]`).onclick = () =>
+    addQuestion(qIdx);
 
   addQuestion(qIdx);
 }
@@ -128,15 +122,13 @@ function addQuestion(qIdx) {
   const quizBox = quizzesWrap.querySelector(`.quizBox[data-quiz="${qIdx}"]`);
   if (!quizBox) return;
 
-  const wrap = quizBox.querySelector(`[data-questions]`);
+  const wrap = quizBox.querySelector("[data-questions]");
   const tIdx = wrap.querySelectorAll(".questionBox").length;
 
   wrap.insertAdjacentHTML("beforeend", questionHTML(qIdx, tIdx));
 
-  const rm = wrap.querySelector(`[data-remove-question="${qIdx}:${tIdx}"]`);
-  rm.onclick = () => {
-    const box = wrap.querySelector(`.questionBox[data-question="${tIdx}"]`);
-    if (box) box.remove();
+  wrap.querySelector(`[data-remove-question="${qIdx}:${tIdx}"]`).onclick = () => {
+    wrap.querySelector(`.questionBox[data-question="${tIdx}"]`)?.remove();
   };
 }
 
@@ -146,91 +138,99 @@ btnAddQuiz.onclick = addQuizBlock;
 addLessonBlock();
 addQuizBlock();
 
+
+function validateBeforePublish() {
+  if (!cTitle.value.trim() || !cDesc.value.trim()) {
+    show("Course title and description are required.");
+    return false;
+  }
+
+  for (const l of lessonsWrap.querySelectorAll(".lessonBox")) {
+    if (!l.querySelector("[data-l-title]").value.trim()) {
+      show("Each lesson must have a title.");
+      return false;
+    }
+  }
+
+  for (const q of quizzesWrap.querySelectorAll(".quizBox")) {
+    if (!q.querySelector("[data-q-title]").value.trim()) {
+      show("Each quiz must have a title.");
+      return false;
+    }
+
+    for (const t of q.querySelectorAll(".questionBox")) {
+      const question = t.querySelector("[data-t-question]").value.trim();
+      const options = [...t.querySelectorAll("[data-opt]")].map(o => o.value.trim());
+      const checked = t.querySelector('input[type="radio"]:checked');
+
+      if (!question || options.some(o => !o) || !checked) {
+        show("Each question must have text, 4 options and a correct answer.");
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 btnPublish.onclick = async () => {
   try {
     show("");
 
-    const title = cTitle.value.trim();
-    const description = cDesc.value.trim();
-
-    if (!title || !description) {
-      show("Course title and description are required.");
-      return;
-    }
+    if (!validateBeforePublish()) return;
 
     btnPublish.disabled = true;
     btnPublish.textContent = "Publishing...";
 
     const course = await apiRequest("/courses", {
       method: "POST",
-      body: { title, description },
+      body: {
+        title: cTitle.value.trim(),
+        description: cDesc.value.trim()
+      },
       auth: true
     });
 
     const courseId = course._id || course.id;
-    if (!courseId) {
-      throw new Error("Course was created, but id is missing.");
-    }
+    if (!courseId) throw new Error("Course id missing");
 
-    const lessonBoxes = Array.from(lessonsWrap.querySelectorAll(".lessonBox"));
     let order = 1;
-
-    for (const box of lessonBoxes) {
-      const lTitle = box.querySelector("[data-l-title]")?.value?.trim();
-      const lContent = box.querySelector("[data-l-content]")?.value?.trim() || "";
-      const lVideo = box.querySelector("[data-l-video]")?.value?.trim() || "";
-
-      if (!lTitle) continue; 
-
+    for (const box of lessonsWrap.querySelectorAll(".lessonBox")) {
       await apiRequest(`/courses/${courseId}/lessons`, {
         method: "POST",
         body: {
-          title: lTitle,
-          content: lContent,
-          videoUrl: lVideo,
+          title: box.querySelector("[data-l-title]").value.trim(),
+          content: box.querySelector("[data-l-content]").value.trim() || "",
+          videoUrl: box.querySelector("[data-l-video]").value.trim() || "",
           orderNumber: order++
         },
         auth: true
       });
     }
 
-    const quizBoxes = Array.from(quizzesWrap.querySelectorAll(".quizBox"));
-    for (const qBox of quizBoxes) {
-      const qTitle = qBox.querySelector("[data-q-title]")?.value?.trim();
-      if (!qTitle) continue;
-
-      const taskBoxes = Array.from(qBox.querySelectorAll(".questionBox"));
-
-      const tasks = taskBoxes.map((tBox) => {
-        const question = tBox.querySelector("[data-t-question]")?.value?.trim() || "";
-
-        const options = [0, 1, 2, 3].map((i) => {
-          return tBox.querySelector(`[data-opt="${i}"]`)?.value?.trim() || "";
-        });
-
-        const checked = tBox.querySelector(`input[type="radio"]:checked`);
-        const correctIndex = checked ? Number(checked.value) : -1;
-
-        return { question, options, correctIndex };
-      }).filter(t =>
-        t.question &&
-        t.options.every(o => o) &&
-        t.correctIndex >= 0
-      );
-
-      if (!tasks.length) {
-        continue;
-      }
+    for (const qBox of quizzesWrap.querySelectorAll(".quizBox")) {
+      const tasks = [...qBox.querySelectorAll(".questionBox")].map(tBox => {
+        const checked = tBox.querySelector('input[type="radio"]:checked');
+        return {
+          question: tBox.querySelector("[data-t-question]").value.trim(),
+          options: [0,1,2,3].map(i =>
+            tBox.querySelector(`[data-opt="${i}"]`).value.trim()
+          ),
+          correctIndex: Number(checked.value)
+        };
+      });
 
       await apiRequest(`/courses/${courseId}/quizzes`, {
         method: "POST",
-        body: { title: qTitle, tasks },
+        body: {
+          title: qBox.querySelector("[data-q-title]").value.trim(),
+          tasks
+        },
         auth: true
       });
     }
 
     show("Published successfully!", true);
-
     window.location.href = "courses";
 
   } catch (e) {
