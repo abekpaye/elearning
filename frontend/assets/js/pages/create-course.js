@@ -18,19 +18,17 @@ function show(text, ok = false) {
   msg.style.color = ok ? "green" : "crimson";
 }
 
-/* ---------- access guard ---------- */
 (function guard() {
   if (!isLoggedIn()) {
-    window.location.href = "login.html?next=create-course.html";
+    window.location.href = "/login?next=/create-course";
     return;
   }
   if (getRole() !== "instructor") {
-    window.location.href = "courses.html";
+    window.location.href = "/courses";
     return;
   }
 })();
 
-/* ---------- LESSON UI ---------- */
 let lessonCount = 0;
 
 function lessonBlockHTML(idx) {
@@ -62,7 +60,6 @@ function addLessonBlock() {
   };
 }
 
-/* ---------- QUIZ UI ---------- */
 let quizCount = 0;
 
 function quizBlockHTML(qIdx) {
@@ -116,17 +113,14 @@ function addQuizBlock() {
   const qIdx = quizCount++;
   quizzesWrap.insertAdjacentHTML("beforeend", quizBlockHTML(qIdx));
 
-  // remove quiz
   quizzesWrap.querySelector(`[data-remove-quiz="${qIdx}"]`).onclick = () => {
     const box = quizzesWrap.querySelector(`.quizBox[data-quiz="${qIdx}"]`);
     if (box) box.remove();
   };
 
-  // add question
   const addBtn = quizzesWrap.querySelector(`[data-add-question="${qIdx}"]`);
   addBtn.onclick = () => addQuestion(qIdx);
 
-  // start with 1 question by default
   addQuestion(qIdx);
 }
 
@@ -146,15 +140,12 @@ function addQuestion(qIdx) {
   };
 }
 
-/* ---------- BUTTONS ---------- */
 btnAddLesson.onclick = addLessonBlock;
 btnAddQuiz.onclick = addQuizBlock;
 
-// some defaults
 addLessonBlock();
 addQuizBlock();
 
-/* ---------- PUBLISH ---------- */
 btnPublish.onclick = async () => {
   try {
     show("");
@@ -170,7 +161,6 @@ btnPublish.onclick = async () => {
     btnPublish.disabled = true;
     btnPublish.textContent = "Publishing...";
 
-    // 1) create course
     const course = await apiRequest("/courses", {
       method: "POST",
       body: { title, description },
@@ -182,7 +172,6 @@ btnPublish.onclick = async () => {
       throw new Error("Course was created, but id is missing.");
     }
 
-    // 2) lessons
     const lessonBoxes = Array.from(lessonsWrap.querySelectorAll(".lessonBox"));
     let order = 1;
 
@@ -191,7 +180,7 @@ btnPublish.onclick = async () => {
       const lContent = box.querySelector("[data-l-content]")?.value?.trim() || "";
       const lVideo = box.querySelector("[data-l-video]")?.value?.trim() || "";
 
-      if (!lTitle) continue; // skip empty blocks
+      if (!lTitle) continue; 
 
       await apiRequest(`/courses/${courseId}/lessons`, {
         method: "POST",
@@ -205,7 +194,6 @@ btnPublish.onclick = async () => {
       });
     }
 
-    // 3) quizzes
     const quizBoxes = Array.from(quizzesWrap.querySelectorAll(".quizBox"));
     for (const qBox of quizBoxes) {
       const qTitle = qBox.querySelector("[data-q-title]")?.value?.trim();
@@ -231,7 +219,6 @@ btnPublish.onclick = async () => {
       );
 
       if (!tasks.length) {
-        // If quiz is empty/invalid, skip it
         continue;
       }
 
@@ -244,8 +231,7 @@ btnPublish.onclick = async () => {
 
     show("Published successfully!", true);
 
-    // 4) redirect
-    window.location.href = "courses.html";
+    window.location.href = "courses";
 
   } catch (e) {
     show(e.message || "Publish failed");

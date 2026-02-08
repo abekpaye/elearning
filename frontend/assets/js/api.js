@@ -20,11 +20,11 @@ export async function apiRequest(path, { method = "GET", body = null, auth = fal
   if (res.status === 401) {
     localStorage.removeItem("learnify_token");
 
-    if (!window.location.pathname.includes("login.html")) {
+    if (!window.location.pathname.includes("login")) {
       const next = encodeURIComponent(
         window.location.pathname + window.location.search
       );
-      window.location.href = `login.html?next=${next}`;
+      window.location.href = `/login?next=${next}`;
     }
 
     throw new Error("Unauthorized");

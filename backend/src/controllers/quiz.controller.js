@@ -6,7 +6,6 @@ const mongoose = require("mongoose");
 exports.createAttempt = async (req, res) => {
   try {
     const { quizId, answers } = req.body;
-    // answers: [{ taskId: "...", selectedOptionId: "..." }, ...]
 
     const studentId = req.user.id;
 
@@ -16,7 +15,6 @@ exports.createAttempt = async (req, res) => {
       });
     }
 
-    // 1) Find course that contains this quiz (we need correctOptionId for checking)
     const course = await Course.findOne(
       { "quizzes._id": quizId },
       { quizzes: 1 }
@@ -26,13 +24,11 @@ exports.createAttempt = async (req, res) => {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // 2) Get the quiz subdocument
     const quiz = course.quizzes.id(quizId);
     if (!quiz) {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    // 3) Check enrollment
     const enrollment = await Enrollment.findOne({
       studentId,
       courseId: course._id
@@ -42,12 +38,10 @@ exports.createAttempt = async (req, res) => {
       return res.status(403).json({ message: "Not enrolled in this course" });
     }
 
-    // 4) Build map: taskId -> selectedOptionId
     const answerMap = new Map(
       answers.map((a) => [String(a.taskId), String(a.selectedOptionId)])
     );
 
-    // 5) Check each question and create results
     const results = quiz.tasks.map((t) => {
       const taskId = String(t._id);
       const selectedOptionId = answerMap.get(taskId) || null;
@@ -64,7 +58,6 @@ exports.createAttempt = async (req, res) => {
       };
     });
 
-    // 6) Score: normalized to 0–100 based on number of questions
     const totalQuestions = quiz.tasks.length;
 
     const correctCount = results.filter((r) => r.isCorrect).length;
@@ -74,24 +67,20 @@ exports.createAttempt = async (req, res) => {
         ? Math.round((correctCount / totalQuestions) * 100)
         : 0;
 
-    // 7) Save attempt to quizAttempts
     await QuizAttempt.create({
       studentId,
       quizId,
       score
     });
 
-    // 8) Update progress: best score per quiz / total quizzes in course
 
     const quizIds = course.quizzes.map(q => q._id);
 
-    // берем ВСЕ попытки студента по квизам этого курса
     const attempts = await QuizAttempt.find({
       studentId,
       quizId: { $in: quizIds }
     });
 
-    // quizId -> bestScore
     const bestScoresMap = {};
 
     for (const attempt of attempts) {
@@ -107,7 +96,6 @@ exports.createAttempt = async (req, res) => {
 
     const totalQuizzes = quizIds.length;
 
-    // сумма лучших результатов (несданные квизы = 0)
     const totalBestScore = Object.values(bestScoresMap)
       .reduce((sum, s) => sum + s, 0);
 

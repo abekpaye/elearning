@@ -64,7 +64,7 @@ function render(courses) {
 
     if (btn.dataset.action === "open") {
       btn.onclick = () =>
-        window.location.href = `course.html?id=${id}`;
+        window.location.href = `/course?id=${id}`;
     } else {
       btn.onclick = () => enroll(id);
     }

@@ -36,7 +36,7 @@ function updateNav() {
 }
 
 export async function initLayout() {
-  await loadPartial("#header", "partials/header.html");
-  await loadPartial("#footer", "partials/footer.html");
+  await loadPartial("#header", "/partials/header.html");
+  await loadPartial("#footer", "/partials/footer.html");
   updateNav();
 }

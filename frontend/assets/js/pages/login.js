@@ -23,12 +23,10 @@ form.addEventListener("submit", async (e) => {
       auth: false,
     });
 
-    // 🔥 сохраняем ТОЛЬКО токен
     saveAuth(data.token);
 
     show("Login successful! Redirecting...", true);
 
-    // 👉 сразу на dashboard
     setTimeout(() => {
       window.location.href = "courses.html";
     }, 500);

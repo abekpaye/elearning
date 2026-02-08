@@ -42,9 +42,6 @@ exports.getCourseById = async (req, res) => {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    // ✅ instructors can VIEW any course
-    // ❗ editing is still protected in edit endpoints by instructorId checks
-
     if (role === "student") {
       const enrolled = await Enrollment.exists({
         studentId: userId,
@@ -95,24 +92,19 @@ exports.addQuiz = async (req, res) => {
       return res.status(400).json({ message: "Quiz title is required" });
     }
 
-    // tasks can be optional
     const safeTasks = Array.isArray(tasks) ? tasks : [];
 
-    // Normalize tasks to required schema:
-    // task: { question, options:[{_id,text}], correctOptionId }
     const normalizedTasks = safeTasks.map((t) => {
       const question = (t?.question || "").trim();
       if (!question) {
         throw new Error("Each task must have a question");
       }
 
-      // options can be ["A","B"] or [{text:"A"}] etc.
       const rawOptions = Array.isArray(t?.options) ? t.options : [];
       if (rawOptions.length < 2) {
         throw new Error("Each task must have at least 2 options");
       }
 
-      // Build option docs with ObjectIds
       const optionDocs = rawOptions.map((o) => {
         const text = typeof o === "string" ? o : (o?.text || "");
         const clean = String(text).trim();
@@ -123,7 +115,6 @@ exports.addQuiz = async (req, res) => {
         };
       });
 
-      // correctOptionId may be provided OR correctIndex
       let correctOptionId = t?.correctOptionId || null;
 
       if (!correctOptionId && Number.isInteger(t?.correctIndex)) {

@@ -1,4 +1,3 @@
-// frontend/assets/js/pages/course.js
 import { apiRequest } from "../api.js";
 import { getRole, isLoggedIn, getUserId } from "../auth.js";
 
@@ -14,8 +13,6 @@ const contentArea = document.getElementById("contentArea");
 
 let currentCourse = null;
 let isEnrolled = false;
-
-/* ---------- helpers ---------- */
 
 function show(text, ok = false) {
   msg.textContent = text;
@@ -57,8 +54,6 @@ function isOwnerInstructor(course) {
   return String(instId) === String(uid);
 }
 
-/* ---------- enroll UI ---------- */
-
 async function enroll(courseId) {
   try {
     await apiRequest("/enrollments", {
@@ -81,7 +76,7 @@ function renderActions(courseId) {
 
   if (!isLoggedIn()) {
     actionsEl.innerHTML = `
-      <a class="btn" href="login.html?next=${encodeURIComponent(`course.html?id=${courseId}`)}">
+      <a class="btn" href="/login?next=${encodeURIComponent(`/course?id=${courseId}`)}">
         Login to enroll
       </a>
     `;
@@ -107,8 +102,6 @@ function renderActions(courseId) {
     document.getElementById("btnDeleteCourse").onclick = () => deleteCourse(courseId);
   }
 }
-
-/* ---------- lessons ---------- */
 
 function openLessonByIndex(index = 0) {
   const l = currentCourse?.lessons?.[index];
@@ -158,8 +151,6 @@ function renderNavLessons(lessons = []) {
     el.onclick = () => openLessonByIndex(Number(el.dataset.lesson));
   });
 }
-
-/* ---------- quizzes: stats / lock / submit ---------- */
 
 async function loadQuizStats(quizId) {
   try {
@@ -299,23 +290,19 @@ async function openQuizByIndex(index = 0) {
       auth: true
     });
 
-    // ✅ показать правильные / неправильные
     markQuizResults(resp.results || []);
 
     quizMsg.textContent = `Score: ${resp.score}. Progress: ${resp.progress}.`;
     quizMsg.style.color = "green";
 
-    // 🔒 блокируем варианты
     contentArea
       .querySelectorAll('input[type="radio"]')
       .forEach((i) => (i.disabled = true));
 
-    // 🔁 меняем Submit → Retake
     submitBtn.textContent = "Retake";
     submitBtn.type = "button";
 
     submitBtn.onclick = () => {
-      // очистка ответов
       contentArea
         .querySelectorAll('input[type="radio"]')
         .forEach((i) => {
@@ -323,14 +310,12 @@ async function openQuizByIndex(index = 0) {
           i.disabled = false;
         });
 
-      // очистка feedback
       contentArea
         .querySelectorAll("[data-feedback]")
         .forEach((f) => (f.textContent = ""));
 
       quizMsg.textContent = "";
 
-      // возвращаем Submit
       submitBtn.textContent = "Submit";
       submitBtn.type = "submit";
       submitBtn.onclick = null;
@@ -445,14 +430,12 @@ async function saveChanges() {
   }
 
   try {
-    // 1) update course fields
     await apiRequest(`/courses/${courseId}`, {
       method: "PATCH",
       body: { title, description },
       auth: true
     });
 
-    // 2) lessons: update existing, create new
     const wrap = document.getElementById("lessonsEditWrap");
     const rows = Array.from(wrap.querySelectorAll("[data-lrow]"));
 
@@ -490,7 +473,6 @@ async function saveChanges() {
     editMsg.textContent = "Saved!";
     editMsg.style.color = "green";
 
-    // reload course
     await load();
     openLessonByIndex(0);
 
@@ -508,13 +490,11 @@ async function deleteCourse(courseId) {
       auth: true
     });
 
-    window.location.href = "courses.html";
+    window.location.href = "/courses";
   } catch (e) {
     show(e.message || "Delete failed");
   }
 }
-
-/* ---------- quizzes nav ---------- */
 
 function renderNavQuizzes(quizzes = []) {
   navQuizzes.innerHTML = quizzes.length
@@ -533,8 +513,6 @@ function renderNavQuizzes(quizzes = []) {
     el.onclick = () => openQuizByIndex(Number(el.dataset.quiz));
   });
 }
-
-/* ---------- load course ---------- */
 
 async function load() {
   const courseId = getCourseId();

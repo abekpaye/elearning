@@ -1,6 +1,5 @@
 const TOKEN_KEY = "learnify_token";
 
-/* save ONLY token */
 export function saveAuth(token) {
   localStorage.setItem(TOKEN_KEY, token);
 }
@@ -19,7 +18,6 @@ function parseJwt(token) {
   }
 }
 
-/* 🔥 ROLE FROM TOKEN */
 export function getRole() {
   const token = getToken();
   if (!token) return null;
@@ -42,5 +40,5 @@ export function isLoggedIn() {
 
 export function logout() {
   localStorage.removeItem(TOKEN_KEY);
-  window.location.href = "index.html";
+  window.location.href = "/";
 }

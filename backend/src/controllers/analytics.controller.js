@@ -101,7 +101,7 @@ exports.getTopStudentsByCourse = async (req, res) => {
         }
       },
       { $sort: { avgScore: -1 } },
-      { $limit: 3 }, // 🔥 ТРЕБУЕМЫЙ ТОП-3
+      { $limit: 3 }, 
       {
         $lookup: {
           from: "users",

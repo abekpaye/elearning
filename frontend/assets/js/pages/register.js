@@ -24,7 +24,7 @@ form.addEventListener("submit", async (e) => {
     });
 
     show("Registration successful! Please login.", true);
-    setTimeout(() => (window.location.href = "login.html"), 700);
+    setTimeout(() => (window.location.href = "/login"), 700);
   } catch (err) {
     show(err.message || "Registration failed");
   }

@@ -49,8 +49,6 @@ function showPanel(role) {
 
 })();
 
-/* ---------- STUDENT ---------- */
-
 document.getElementById("btnProgress")?.addEventListener("click", async () => {
   const courseId = document.getElementById("studentCourseId").value.trim();
   const progress = Number(document.getElementById("studentProgress").value);
@@ -102,8 +100,6 @@ async function loadStudentProgress() {
     show(e.message || "Failed to load progress");
   }
 }
-
-/* ---------- INSTRUCTOR ---------- */
 
   async function loadInstructorCourses() {
   try {
