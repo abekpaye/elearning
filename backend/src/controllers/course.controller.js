@@ -220,6 +220,39 @@ exports.deleteCourse = async (req, res) => {
   }
 };
 
+exports.updateLesson = async (req, res) => {
+  try {
+    const { courseId, lessonId } = req.params;
+    const { title, content, videoUrl, orderNumber } = req.body;
+
+    const course = await Course.findOne({
+      _id: courseId,
+      instructorId: req.user.id
+    });
+
+    if (!course) {
+      return res.status(404).json({ message: "Course not found or access denied" });
+    }
+
+    const lesson = course.lessons.id(lessonId);
+
+    if (!lesson) {
+      return res.status(404).json({ message: "Lesson not found" });
+    }
+
+    if (title !== undefined) lesson.title = title;
+    if (content !== undefined) lesson.content = content;
+    if (videoUrl !== undefined) lesson.videoUrl = videoUrl;
+    if (orderNumber !== undefined) lesson.orderNumber = orderNumber;
+
+    await course.save();
+
+    res.json(course);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.getMyCourses = async (req, res) => {
   try {
     const courses = await Course.find({

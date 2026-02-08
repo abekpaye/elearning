@@ -7,7 +7,8 @@ const {
   getCourses,
   getCourseById,
   addLesson,
-  addQuiz
+  addQuiz,
+  updateLesson
 } = require("../controllers/course.controller");
 const { updateCourse, deleteCourse } = require("../controllers/course.controller");
 const { getMyCourses } = require("../controllers/course.controller");
@@ -20,5 +21,11 @@ router.post("/:id/lessons", auth, role("instructor"), addLesson);
 router.post("/:id/quizzes", auth, role("instructor"), addQuiz);
 router.patch("/:id", auth, role("instructor"), updateCourse);
 router.delete("/:id", auth, role("instructor"), deleteCourse);
+router.patch(
+  "/:courseId/lessons/:lessonId",
+  auth,
+  role("instructor"),
+  updateLesson
+);
 
 module.exports = router
